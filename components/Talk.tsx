@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Platform } from "react-native";
 import { Button, Text, YStack } from "tamagui";
 
@@ -16,14 +16,55 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  useEffect(() => {
-    checkWebAudioSupport();
-  }, []);
-
-  const checkWebAudioSupport = () => {
+  const checkWebAudioSupport = useCallback(() => {
     if (Platform.OS === "web") {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setIsSupported(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    checkWebAudioSupport();
+  }, [checkWebAudioSupport]);
+
+  const convertTextToSpeech = async (text: string, apiKey: string) => {
+    try {
+      const response = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1",
+          input: text,
+          voice: "alloy",
+          speed: 1.0, // Keep at 1.0 to avoid robotic sound
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`TTS API failed: ${response.status}`);
+      }
+
+      const audioData = await response.arrayBuffer();
+      const audioBlob = new Blob([audioData], { type: "audio/mpeg" });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      const audio = new Audio(audioUrl);
+      await audio.play();
+
+      // Clean up the blob URL after playing
+      audio.addEventListener("ended", () => {
+        URL.revokeObjectURL(audioUrl);
+      });
+    } catch (_error) {
+      // Silent fallback to Web Speech API if OpenAI TTS fails
+      if ("speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0; // Keep at default speed for better quality
+        speechSynthesis.speak(utterance);
       }
     }
   };
@@ -58,7 +99,9 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         });
 
         // Stop all audio tracks
-        stream.getTracks().forEach((track) => track.stop());
+        for (const track of stream.getTracks()) {
+          track.stop();
+        }
 
         if (apiKey) {
           await processVoiceInput(audioBlob);
@@ -69,11 +112,12 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
             "I heard you say: Hello! This is a web demo recording. How can I help you today?"
           );
 
-          // Use Web Speech API for TTS if available
+          // Use Web Speech API for TTS in demo mode (fallback)
           if ("speechSynthesis" in window) {
             const utterance = new SpeechSynthesisUtterance(
               "I heard you say: Hello! This is a web demo recording. How can I help you today?"
             );
+            utterance.rate = 1.0; // Keep at default speed for better quality
             speechSynthesis.speak(utterance);
           }
         }
@@ -182,13 +226,8 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 
           setResponse(aiResponse);
 
-          // Convert AI response to speech using Web Speech API
-          if ("speechSynthesis" in window) {
-            const utterance = new SpeechSynthesisUtterance(aiResponse);
-            utterance.rate = 0.9;
-            utterance.pitch = 1;
-            speechSynthesis.speak(utterance);
-          }
+          // Convert AI response to speech using OpenAI TTS API
+          await convertTextToSpeech(aiResponse, apiKey);
         } catch {
           setResponse("Sorry, I encountered an error processing your request.");
         }
@@ -309,7 +348,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         </Text>
       ) : (
         <Text fontSize="$2" color="$gray10" textAlign="center" maxWidth={320}>
-          Using OpenAI Whisper + GPT-4o + Web Speech API
+          Using OpenAI Whisper + GPT-4o + TTS-1 (High Quality Voice)
         </Text>
       )}
     </YStack>
