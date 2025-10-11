@@ -10,6 +10,29 @@ export type ChatCompletionMessage = {
   name?: string;
 };
 
+export type ResponsesInput = {
+  role?: "user";
+  content: string;
+  attachments?: unknown[];
+};
+
+export type ResponsesParams = {
+  model: string;
+  input: ResponsesInput | string;
+  tools?: Tool[];
+  conversation?: string;
+  background?: boolean;
+  max_tokens?: number;
+};
+
+export type ResponsesResult = {
+  id: string;
+  conversation: string;
+  output_text: string;
+  tool_calls?: ToolCall[];
+  status: "completed" | "in_progress" | "failed";
+};
+
 export type ToolCall = {
   id: string;
   type: "function";
@@ -89,6 +112,14 @@ const chatCompletionSchema = z.object({
     .min(1, "OpenAI response did not include any choices"),
 });
 
+const responsesSchema = z.object({
+  id: z.string(),
+  conversation: z.string(),
+  output_text: z.string(),
+  tool_calls: z.array(toolCallSchema).optional(),
+  status: z.enum(["completed", "in_progress", "failed"]),
+});
+
 function parseTranscription(json: unknown): TranscriptionResult {
   const result = transcriptionSchema.safeParse(json);
 
@@ -121,6 +152,20 @@ function parseChatCompletion(json: unknown): ChatCompletionResult {
   ] = result.data.choices;
 
   return { content, tool_calls };
+}
+
+function parseResponses(json: unknown): ResponsesResult {
+  const result = responsesSchema.safeParse(json);
+
+  if (!result.success) {
+    throw new OpenAIClientError(
+      "Invalid responses payload returned by OpenAI",
+      undefined,
+      result.error
+    );
+  }
+
+  return result.data;
 }
 
 function buildHeaders(apiKey: string, extra?: HeadersInit): HeadersInit {
@@ -189,6 +234,51 @@ export class OpenAIClient {
 
     const payload = await this.parseJson(response);
     return parseChatCompletion(payload);
+  }
+
+  async createResponse({
+    model,
+    input,
+    tools,
+    conversation,
+    background = false,
+    max_tokens,
+  }: ResponsesParams): Promise<ResponsesResult> {
+    const requestBody: {
+      model: string;
+      input: ResponsesInput | string;
+      tools?: Tool[];
+      conversation?: string;
+      background?: boolean;
+      max_tokens?: number;
+    } = {
+      model,
+      input,
+      background,
+    };
+
+    if (tools && tools.length > 0) {
+      requestBody.tools = tools;
+    }
+
+    if (conversation) {
+      requestBody.conversation = conversation;
+    }
+
+    if (max_tokens) {
+      requestBody.max_tokens = max_tokens;
+    }
+
+    const response = await fetch(`${OPENAI_BASE_URL}/v1/responses`, {
+      method: "POST",
+      headers: buildHeaders(this.apiKey, {
+        "Content-Type": "application/json",
+      }),
+      body: JSON.stringify(requestBody),
+    });
+
+    const payload = await this.parseJson(response);
+    return parseResponses(payload);
   }
 
   private async parseJson(response: Response): Promise<unknown> {

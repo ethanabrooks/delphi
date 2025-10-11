@@ -15,6 +15,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
+  const [conversationId, setConversationId] = useState<string | undefined>();
   const [isSupported, setIsSupported] = useState(() =>
     voiceService.isSupported()
   );
@@ -122,6 +123,12 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         aiResponse = await customProcessor(userText);
       } else {
         aiResponse = await conversationAgent.processMessage(userText);
+
+        // Update conversation ID for state tracking
+        const newConversationId = conversationAgent.getConversationId();
+        if (newConversationId && newConversationId !== conversationId) {
+          setConversationId(newConversationId);
+        }
       }
 
       setResponse(aiResponse);
@@ -147,6 +154,13 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     } else {
       await startRecording();
     }
+  };
+
+  const clearConversation = () => {
+    conversationAgent.clearConversation();
+    setConversationId(undefined);
+    setTranscript("");
+    setResponse("");
   };
 
   return (
@@ -208,6 +222,18 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         </Text>
       </Button>
 
+      {conversationId && (
+        <Button
+          onPress={clearConversation}
+          size="$3"
+          backgroundColor="$gray8"
+          color="white"
+          marginTop="$3"
+        >
+          Clear Conversation
+        </Button>
+      )}
+
       {transcript && (
         <YStack
           backgroundColor="$gray3"
@@ -242,7 +268,8 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         </Text>
       ) : (
         <Text fontSize="$2" color="$gray10" textAlign="center" maxWidth={320}>
-          Using OpenAI Whisper + GPT-4o with todo management capabilities
+          Using OpenAI Whisper + GPT-4o with Responses API and persistent
+          conversation state
         </Text>
       )}
     </YStack>

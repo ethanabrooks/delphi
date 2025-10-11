@@ -2,6 +2,7 @@ import OpenAIClient, { type ChatCompletionMessage } from "./openaiClient";
 import { executeTodoFunction, TODO_TOOLS } from "./todoTools";
 
 export interface ConversationState {
+  conversationId?: string;
   messages: ChatCompletionMessage[];
 }
 
@@ -12,6 +13,7 @@ export class ConversationAgent {
   constructor(apiKey?: string) {
     this.client = apiKey ? new OpenAIClient(apiKey) : null;
     this.state = {
+      conversationId: undefined,
       messages: [
         {
           role: "system",
@@ -43,72 +45,53 @@ Keep responses conversational and concise since this is a voice interface.`,
       return "I'm running in demo mode. Please add your OpenAI API key for full todo management functionality.";
     }
 
-    // Add user message to conversation
-    this.state.messages.push({
-      role: "user",
-      content: userMessage,
-    });
-
     try {
-      let response = await this.client.createChatCompletion({
+      // Use the Responses API with conversation state
+      const response = await this.client.createResponse({
         model: "gpt-4o",
-        messages: this.state.messages,
-        maxTokens: 300,
+        input: userMessage,
         tools: TODO_TOOLS,
-        tool_choice: "auto",
+        conversation: this.state.conversationId,
+        max_tokens: 300,
       });
 
-      // Handle function calls
-      if (response.tool_calls && response.tool_calls.length > 0) {
-        // Add assistant message with tool calls
-        this.state.messages.push({
-          role: "assistant",
-          content: response.content,
-          tool_calls: response.tool_calls,
-        });
+      // Store the conversation ID for future requests
+      if (!this.state.conversationId) {
+        this.state.conversationId = response.conversation;
+      }
 
-        // Execute each tool call
+      // Handle tool calls if present
+      if (response.tool_calls && response.tool_calls.length > 0) {
+        // Execute tool calls and collect results
+        const toolResults: string[] = [];
+
         for (const toolCall of response.tool_calls) {
           const functionResult = await executeTodoFunction(
             toolCall.function.name,
             toolCall.function.arguments
           );
-
-          // Add tool result to conversation
-          this.state.messages.push({
-            role: "tool",
-            content: functionResult,
-            tool_call_id: toolCall.id,
-            name: toolCall.function.name,
-          });
+          toolResults.push(functionResult);
         }
 
-        // Get final response after function execution
-        response = await this.client.createChatCompletion({
+        // Create a follow-up request with tool results
+        // Note: With Responses API, tool execution is handled differently
+        // We'll include the tool results in a follow-up message
+        const followUpInput = `Tool execution results: ${toolResults.join(", ")}. Please provide a natural response to the user based on these results.`;
+
+        const finalResponse = await this.client.createResponse({
           model: "gpt-4o",
-          messages: this.state.messages,
-          maxTokens: 200,
+          input: followUpInput,
+          conversation: this.state.conversationId,
+          max_tokens: 200,
         });
+
+        return finalResponse.output_text || "I've completed your request.";
       }
 
-      const assistantResponse =
-        response.content || "I'm sorry, I couldn't process that request.";
-
-      // Add final assistant response to conversation
-      this.state.messages.push({
-        role: "assistant",
-        content: assistantResponse,
-      });
-
-      // Keep conversation history manageable (last 10 messages)
-      if (this.state.messages.length > 10) {
-        const systemMessage = this.state.messages[0];
-        this.state.messages = [systemMessage, ...this.state.messages.slice(-9)];
-      }
-
-      return assistantResponse;
+      return (
+        response.output_text || "I'm sorry, I couldn't process that request."
+      );
     } catch (_error) {
-      // Note: Error occurred during conversation processing
       return "I'm sorry, I encountered an error processing your request. Please try again.";
     }
   }
@@ -117,7 +100,12 @@ Keep responses conversational and concise since this is a voice interface.`,
     return [...this.state.messages];
   }
 
+  getConversationId(): string | undefined {
+    return this.state.conversationId;
+  }
+
   clearConversation(): void {
+    this.state.conversationId = undefined;
     this.state.messages = [this.state.messages[0]]; // Keep system message
   }
 }
