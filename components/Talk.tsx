@@ -1,15 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
 import { View, Text, TouchableOpacity, Alert, Platform } from "react-native";
 
-interface WebVoiceAgentProps {
+interface TalkProps {
   apiKey?: string;
   customProcessor?: (transcript: string) => Promise<string>;
 }
 
-export default function WebVoiceAgent({
+export default function Talk({
   apiKey,
   customProcessor,
-}: WebVoiceAgentProps) {
+}: TalkProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -26,7 +26,7 @@ export default function WebVoiceAgent({
     if (Platform.OS === "web") {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setIsSupported(false);
-        console.warn("Web Audio API not supported");
+        // Web Audio API not supported
       }
     }
   };
@@ -86,8 +86,8 @@ export default function WebVoiceAgent({
 
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
-    } catch (error) {
-      console.error("Failed to start recording:", error);
+    } catch {
+      // Failed to start recording
       setIsRecording(false);
       Alert.alert(
         "Recording Error",
@@ -114,7 +114,7 @@ export default function WebVoiceAgent({
       const reader = new FileReader();
       reader.onload = async () => {
         try {
-          const base64Audio = (reader.result as string).split(",")[1];
+          // Convert audio blob to FormData for API upload
 
           // Use OpenAI Speech-to-Text API
           const formData = new FormData();
@@ -195,15 +195,15 @@ export default function WebVoiceAgent({
             utterance.pitch = 1;
             speechSynthesis.speak(utterance);
           }
-        } catch (error) {
-          console.error("Failed to process voice input:", error);
+        } catch {
+          // Failed to process voice input
           setResponse("Sorry, I encountered an error processing your request.");
         }
       };
 
       reader.readAsDataURL(audioBlob);
-    } catch (error) {
-      console.error("Failed to process voice input:", error);
+    } catch {
+      // Failed to process voice input
       setResponse("Sorry, I could not process your voice input.");
     }
   };
@@ -227,7 +227,7 @@ export default function WebVoiceAgent({
   return (
     <View className="flex-1 justify-center items-center p-6 space-y-6">
       <Text className="text-3xl font-bold text-gray-800 mb-4">
-        Web Voice Assistant
+        Voice Assistant
       </Text>
 
       {!isSupported && (
