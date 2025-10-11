@@ -268,8 +268,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         </Text>
       ) : (
         <Text fontSize="$2" color="$gray10" textAlign="center" maxWidth={320}>
-          Using OpenAI Whisper + GPT-4o with Responses API and persistent
-          conversation state
+          Using OpenAI Whisper + GPT-4o with advanced conversation management
         </Text>
       )}
     </YStack>
