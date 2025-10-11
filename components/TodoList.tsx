@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert } from "react-native";
 import { Button, Card, Input, ScrollView, Text, XStack, YStack } from "tamagui";
-import { useTodoStats, useTodoStore } from "../stores/simpleTodoStore";
+import useTodosManager from "../hooks/useTodosManager";
 import { PRIORITY_LABELS, type Priority } from "../types/todo";
 
 // Removed all styled components - using Tamagui components directly
@@ -9,24 +9,9 @@ import { PRIORITY_LABELS, type Priority } from "../types/todo";
 export default function TodoList() {
   const [newTodo, setNewTodo] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<Priority>(1);
-
-  // Zustand hooks with SQLite database
-  const {
-    todos,
-    addTodo,
-    deleteTodo,
-    toggleTodo,
-    initializeDb,
-    isLoading,
-    error,
-  } = useTodoStore();
-  const { total, completed, pending } = useTodoStats();
-
-  // Initialize database and load todos on mount
-  // biome-ignore lint/correctness/useExhaustiveDependencies: initializeDb is stable from Zustand store
-  useEffect(() => {
-    initializeDb();
-  }, []);
+  const { todos, stats, isLoading, error, addTodo, toggleTodo, deleteTodo } =
+    useTodosManager();
+  const { total, completed, pending } = stats;
 
   const handleAddTodo = async () => {
     if (!newTodo.trim()) {
@@ -53,7 +38,9 @@ export default function TodoList() {
       {
         text: "Delete",
         style: "destructive",
-        onPress: async () => await deleteTodo(todoId),
+        onPress: async () => {
+          await deleteTodo(todoId);
+        },
       },
     ]);
   };

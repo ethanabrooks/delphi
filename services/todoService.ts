@@ -8,6 +8,7 @@ import type {
   UpdateTodoInput,
 } from "../types/todo";
 
+// biome-ignore lint/complexity/noStaticOnlyClass: service methods map directly to SQL helpers
 export class TodoService {
   static async getAllTodos(): Promise<Todo[]> {
     const database = await db();
