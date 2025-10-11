@@ -6,10 +6,7 @@ interface TalkProps {
   customProcessor?: (transcript: string) => Promise<string>;
 }
 
-export default function Talk({
-  apiKey,
-  customProcessor,
-}: TalkProps) {
+export default function Talk({ apiKey, customProcessor }: TalkProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
