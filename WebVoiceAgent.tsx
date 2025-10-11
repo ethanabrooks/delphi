@@ -3,9 +3,10 @@ import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
 
 interface WebVoiceAgentProps {
   apiKey?: string;
+  customProcessor?: (transcript: string) => Promise<string>;
 }
 
-export default function WebVoiceAgent({ apiKey }: WebVoiceAgentProps) {
+export default function WebVoiceAgent({ apiKey, customProcessor }: WebVoiceAgentProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -121,35 +122,43 @@ export default function WebVoiceAgent({ apiKey }: WebVoiceAgentProps) {
           const userText = transcriptionData.text || 'Could not transcribe audio';
           setTranscript(userText);
 
-          // Get AI response using OpenAI Chat API
-          const chatResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o',
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are a helpful voice assistant. Keep responses conversational and concise.'
-                },
-                {
-                  role: 'user',
-                  content: userText
-                }
-              ],
-              max_tokens: 150
-            }),
-          });
+          // Use custom processor if available, otherwise use OpenAI Chat API
+          let aiResponse: string;
 
-          if (!chatResponse.ok) {
-            throw new Error(`Chat API failed: ${chatResponse.status}`);
+          if (customProcessor) {
+            aiResponse = await customProcessor(userText);
+          } else {
+            // Get AI response using OpenAI Chat API
+            const chatResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'gpt-4o',
+                messages: [
+                  {
+                    role: 'system',
+                    content: 'You are a helpful voice assistant. Keep responses conversational and concise.'
+                  },
+                  {
+                    role: 'user',
+                    content: userText
+                  }
+                ],
+                max_tokens: 150
+              }),
+            });
+
+            if (!chatResponse.ok) {
+              throw new Error(`Chat API failed: ${chatResponse.status}`);
+            }
+
+            const chatData = await chatResponse.json();
+            aiResponse = chatData.choices?.[0]?.message?.content || 'Sorry, I could not process your request.';
           }
 
-          const chatData = await chatResponse.json();
-          const aiResponse = chatData.choices?.[0]?.message?.content || 'Sorry, I could not process your request.';
           setResponse(aiResponse);
 
           // Convert AI response to speech using Web Speech API
