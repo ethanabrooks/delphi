@@ -1,11 +1,18 @@
 import { StatusBar } from "expo-status-bar";
-import { View, Text, TouchableOpacity } from "react-native";
 import { useState } from "react";
-import "./global.css";
+import { TamaguiProvider, YStack, XStack, Text, Button } from 'tamagui';
+import tamaguiConfig from './tamagui.config';
 import Talk from "./components/Talk";
 import TodoList from "./components/TodoList";
 
 type AgentType = "talk" | "todo";
+
+console.log('🚀 App.tsx loading...')
+console.log('🔧 tamaguiConfig:', tamaguiConfig)
+console.log('📦 TamaguiProvider:', typeof TamaguiProvider)
+console.log('📦 YStack:', typeof YStack, 'from tamagui')
+console.log('📦 Button:', typeof Button, 'from tamagui')
+console.log('📦 Text:', typeof Text, 'from tamagui')
 
 export default function App() {
   const [agentType, setAgentType] = useState<AgentType>("talk");
@@ -22,49 +29,43 @@ export default function App() {
     }
   };
 
-  return (
-    <View className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-100">
-      <View className="pt-12 pb-4 px-4">
-        <Text className="text-2xl font-bold text-center text-gray-800 mb-4">
-          Talk & Todo App
-        </Text>
+  console.log('🎨 App rendering with agentType:', agentType)
 
-        <View className="flex-row flex-wrap justify-center gap-2 mb-4">
-          <TouchableOpacity
-            onPress={() => setAgentType("talk")}
-            className={`px-3 py-2 rounded-full ${
-              agentType === "talk" ? "bg-blue-500" : "bg-gray-300"
-            }`}
-          >
-            <Text
-              className={`text-sm font-medium ${
-                agentType === "talk" ? "text-white" : "text-gray-700"
-              }`}
+  return (
+    <TamaguiProvider config={tamaguiConfig}>
+      <YStack flex={1} backgroundColor="$blue2" paddingTop="$12">
+        <YStack paddingTop="$4" paddingBottom="$2" paddingHorizontal="$4">
+          <Text fontSize="$8" fontWeight="bold" textAlign="center" color="$gray12" marginBottom="$4">
+            Talk & Todo App
+          </Text>
+
+          <XStack justifyContent="center" gap="$2" marginBottom="$4" flexWrap="wrap">
+            <Button
+              onPress={() => setAgentType("talk")}
+              theme={agentType === "talk" ? "blue" : "gray"}
+              size="$3"
+              borderRadius="$10"
             >
               Talk
-            </Text>
-          </TouchableOpacity>
+            </Button>
 
-          <TouchableOpacity
-            onPress={() => setAgentType("todo")}
-            className={`px-3 py-2 rounded-full ${
-              agentType === "todo" ? "bg-green-500" : "bg-gray-300"
-            }`}
-          >
-            <Text
-              className={`text-sm font-medium ${
-                agentType === "todo" ? "text-white" : "text-gray-700"
-              }`}
+            <Button
+              onPress={() => setAgentType("todo")}
+              theme={agentType === "todo" ? "green" : "gray"}
+              size="$3"
+              borderRadius="$10"
             >
               Todo List
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            </Button>
+          </XStack>
+        </YStack>
 
-      <View className="flex-1">{renderAgent()}</View>
+        <YStack flex={1}>
+          {renderAgent()}
+        </YStack>
 
-      <StatusBar style="auto" />
-    </View>
+        <StatusBar style="auto" />
+      </YStack>
+    </TamaguiProvider>
   );
 }

@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-} from "react-native";
-import { Priority, PRIORITY_LABELS, PRIORITY_COLORS } from "../types/todo";
+import { Alert } from "react-native";
+import { YStack, XStack, Text, Button, Input, ScrollView, Card } from 'tamagui';
+import { Priority, PRIORITY_LABELS } from "../types/todo";
 import { useTodoStore, useTodoStats } from "../stores/simpleTodoStore";
+
+console.log('📝 TodoList.tsx loading...')
+console.log('📦 YStack:', typeof YStack, 'from tamagui')
+console.log('📦 Card:', typeof Card, 'from tamagui')
+console.log('📦 Input:', typeof Input, 'from tamagui')
+console.log('📦 ScrollView:', typeof ScrollView, 'from tamagui')
+
+// Removed all styled components - using Tamagui components directly
 
 export default function TodoList() {
   const [newTodo, setNewTodo] = useState("");
@@ -65,170 +67,172 @@ export default function TodoList() {
     return new Date(dateString).toLocaleDateString();
   };
 
+  console.log('📝 TodoList rendering, todos count:', todos.length)
+
   return (
-    <View className="flex-1 p-4">
-      <Text className="text-2xl font-bold text-gray-800 mb-6 text-center">
+    <YStack flex={1} padding="$4">
+      <Text fontSize="$7" fontWeight="bold" color="$gray12" marginBottom="$6" textAlign="center">
         My Todo List
       </Text>
 
       {/* Error display */}
       {error && (
-        <View className="bg-red-100 p-3 rounded-lg mb-4">
-          <Text className="text-red-800 text-center">{error}</Text>
-        </View>
+        <Card backgroundColor="$red3" padding="$3" marginBottom="$4">
+          <Text color="$red11" textAlign="center">{error}</Text>
+        </Card>
       )}
 
       {/* Loading indicator */}
       {isLoading && (
-        <View className="bg-blue-100 p-3 rounded-lg mb-4">
-          <Text className="text-blue-800 text-center">Loading...</Text>
-        </View>
+        <Card backgroundColor="$blue3" padding="$3" marginBottom="$4">
+          <Text color="$blue11" textAlign="center">Loading...</Text>
+        </Card>
       )}
 
       {/* Add new todo */}
-      <View className="bg-white p-4 rounded-lg shadow-sm mb-4">
-        <TextInput
+      <Card backgroundColor="$background" padding="$4" marginBottom="$4" elevate>
+        <Input
           value={newTodo}
           onChangeText={setNewTodo}
           placeholder="What needs to be done?"
-          className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
+          borderWidth={1}
+          borderColor="$gray7"
+          borderRadius="$4"
+          padding="$3"
+          marginBottom="$3"
           multiline
-          onSubmitEditing={handleAddTodo}
         />
 
         {/* Priority selection */}
-        <View className="flex-row mb-3">
-          <Text className="text-gray-700 mr-3 py-2">Priority:</Text>
+        <XStack marginBottom="$3" alignItems="center">
+          <Text color="$gray11" marginRight="$3">Priority:</Text>
           {([1, 2, 3] as Priority[]).map((priority) => (
-            <TouchableOpacity
+            <Button
               key={priority}
               onPress={() => setSelectedPriority(priority)}
-              className={`px-3 py-1 rounded-full mr-2 ${
-                selectedPriority === priority
-                  ? PRIORITY_COLORS[priority]
-                  : "bg-gray-200 text-gray-600"
-              }`}
+              theme={selectedPriority === priority ? "blue" : "gray"}
+              size="$2"
+              borderRadius="$10"
+              marginRight="$2"
             >
-              <Text
-                className={selectedPriority === priority ? "" : "text-gray-600"}
-              >
-                {PRIORITY_LABELS[priority]}
-              </Text>
-            </TouchableOpacity>
+              {PRIORITY_LABELS[priority]}
+            </Button>
           ))}
-        </View>
+        </XStack>
 
-        <TouchableOpacity
+        <Button
           onPress={handleAddTodo}
           disabled={isLoading}
-          className={`py-3 rounded-lg ${
-            isLoading ? "bg-gray-400" : "bg-blue-500"
-          }`}
+          theme="blue"
+          size="$4"
+          borderRadius="$4"
         >
-          <Text className="text-white text-center font-semibold">
-            {isLoading ? "Adding..." : "Add Todo"}
-          </Text>
-        </TouchableOpacity>
-      </View>
+          {isLoading ? "Adding..." : "Add Todo"}
+        </Button>
+      </Card>
 
       {/* Todo list */}
-      <ScrollView className="flex-1">
+      <ScrollView flex={1}>
         {todos.length === 0 ? (
-          <View className="bg-gray-50 p-8 rounded-lg">
-            <Text className="text-gray-500 text-center text-lg">
+          <Card backgroundColor="$gray2" padding="$8">
+            <Text color="$gray10" textAlign="center" fontSize="$5">
               No todos yet! Add one above.
             </Text>
-          </View>
+          </Card>
         ) : (
           todos.map((todo) => (
-            <View
+            <Card
               key={todo.id}
-              className={`bg-white p-4 rounded-lg shadow-sm mb-3 ${
-                todo.completed ? "opacity-60" : ""
-              }`}
+              backgroundColor="$background"
+              padding="$4"
+              marginBottom="$3"
+              opacity={todo.completed ? 0.6 : 1}
+              elevate
             >
-              <View className="flex-row justify-between items-start">
-                <View className="flex-1 mr-3">
-                  <TouchableOpacity onPress={() => handleToggleTodo(todo.id)}>
+              <XStack justifyContent="space-between" alignItems="flex-start">
+                <YStack flex={1} marginRight="$3">
+                  <Button
+                    onPress={() => handleToggleTodo(todo.id)}
+                    unstyled
+                    pressStyle={{ opacity: 0.7 }}
+                  >
                     <Text
-                      className={`text-lg font-medium ${
-                        todo.completed
-                          ? "line-through text-gray-500"
-                          : "text-gray-800"
-                      }`}
+                      fontSize="$5"
+                      fontWeight="500"
+                      textDecorationLine={todo.completed ? "line-through" : "none"}
+                      color={todo.completed ? "$gray10" : "$gray12"}
                     >
                       {todo.title}
                     </Text>
-                  </TouchableOpacity>
+                  </Button>
 
                   {todo.description && (
-                    <Text className="text-gray-600 mt-1">
+                    <Text color="$gray11" marginTop="$1">
                       {todo.description}
                     </Text>
                   )}
 
-                  <View className="flex-row items-center mt-2">
-                    <View
-                      className={`px-2 py-1 rounded-full mr-2 ${PRIORITY_COLORS[todo.priority]}`}
+                  <XStack alignItems="center" marginTop="$2">
+                    <Button
+                      theme="blue"
+                      size="$1"
+                      borderRadius="$10"
+                      marginRight="$2"
+                      disabled
                     >
-                      <Text className="text-xs font-medium">
-                        {PRIORITY_LABELS[todo.priority]}
-                      </Text>
-                    </View>
+                      {PRIORITY_LABELS[todo.priority]}
+                    </Button>
 
                     {todo.category && (
-                      <View className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full mr-2">
-                        <Text className="text-xs text-blue-800">
-                          {todo.category}
-                        </Text>
-                      </View>
+                      <Button
+                        theme="blue"
+                        size="$1"
+                        borderRadius="$10"
+                        marginRight="$2"
+                        disabled
+                      >
+                        {todo.category}
+                      </Button>
                     )}
 
-                    <Text className="text-xs text-gray-500">
+                    <Text fontSize="$2" color="$gray10">
                       {formatDate(todo.created_at)}
                     </Text>
-                  </View>
-                </View>
+                  </XStack>
+                </YStack>
 
-                <View className="flex-row">
-                  <TouchableOpacity
+                <XStack>
+                  <Button
                     onPress={() => handleToggleTodo(todo.id)}
-                    className={`px-3 py-2 rounded-lg mr-2 ${
-                      todo.completed ? "bg-yellow-100" : "bg-green-100"
-                    }`}
+                    theme={todo.completed ? "yellow" : "green"}
+                    size="$3"
+                    marginRight="$2"
                   >
-                    <Text
-                      className={`text-sm font-medium ${
-                        todo.completed ? "text-yellow-800" : "text-green-800"
-                      }`}
-                    >
-                      {todo.completed ? "Undo" : "Done"}
-                    </Text>
-                  </TouchableOpacity>
+                    {todo.completed ? "Undo" : "Done"}
+                  </Button>
 
-                  <TouchableOpacity
+                  <Button
                     onPress={() => handleDeleteTodo(todo.id, todo.title)}
-                    className="bg-red-100 px-3 py-2 rounded-lg"
+                    theme="red"
+                    size="$3"
                   >
-                    <Text className="text-red-800 text-sm font-medium">
-                      Delete
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
+                    Delete
+                  </Button>
+                </XStack>
+              </XStack>
+            </Card>
           ))
         )}
       </ScrollView>
 
       {/* Stats */}
       {total > 0 && (
-        <View className="bg-gray-100 p-3 rounded-lg mt-4">
-          <Text className="text-center text-gray-600">
+        <Card backgroundColor="$gray3" padding="$3" marginTop="$4">
+          <Text textAlign="center" color="$gray11">
             {pending} of {total} remaining ({completed} completed)
           </Text>
-        </View>
+        </Card>
       )}
-    </View>
+    </YStack>
   );
 }

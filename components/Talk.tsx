@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
-import { View, Text, TouchableOpacity, Alert, Platform } from "react-native";
+import { useState, useRef, useEffect } from "react";
+import { Alert, Platform } from "react-native";
+import { YStack, Text, Button } from 'tamagui';
 
 interface TalkProps {
   apiKey?: string;
@@ -216,35 +217,42 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
   };
 
   return (
-    <View className="flex-1 justify-center items-center p-6 space-y-6">
-      <Text className="text-3xl font-bold text-gray-800 mb-4">
+    <YStack flex={1} justifyContent="center" alignItems="center" padding="$6" gap="$6">
+      <Text fontSize="$10" fontWeight="bold" color="$gray12" marginBottom="$4">
         Voice Assistant
       </Text>
 
       {!isSupported && (
-        <View className="bg-yellow-100 p-4 rounded-lg mb-4">
-          <Text className="text-yellow-800 text-center">
+        <YStack backgroundColor="$yellow3" padding="$4" borderRadius="$4" marginBottom="$4">
+          <Text color="$yellow11" textAlign="center">
             Web Audio not supported in this browser. Please use Chrome, Firefox,
             or Safari.
           </Text>
-        </View>
+        </YStack>
       )}
 
-      <TouchableOpacity
+      <Button
         onPress={handlePress}
         disabled={isProcessing || !isSupported}
-        className={`w-32 h-32 rounded-full items-center justify-center ${
+        width={128}
+        height={128}
+        borderRadius={64}
+        backgroundColor={
           !isSupported
-            ? "bg-gray-300"
+            ? "$gray6"
             : isRecording
-              ? "bg-red-500"
+              ? "$red9"
               : isProcessing
-                ? "bg-yellow-500"
-                : "bg-blue-500"
-        }`}
+                ? "$yellow9"
+                : "$blue9"
+        }
+        justifyContent="center"
+        alignItems="center"
       >
         <Text
-          className={`text-lg font-semibold ${!isSupported ? "text-gray-500" : "text-white"}`}
+          fontSize="$5"
+          fontWeight="600"
+          color={!isSupported ? "$gray10" : "white"}
         >
           {!isSupported
             ? "Not Supported"
@@ -254,31 +262,31 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
                 ? "Stop"
                 : "Talk"}
         </Text>
-      </TouchableOpacity>
+      </Button>
 
       {transcript && (
-        <View className="bg-gray-100 p-4 rounded-lg max-w-sm">
-          <Text className="text-sm text-gray-600 mb-1">You said:</Text>
-          <Text className="text-gray-800">{transcript}</Text>
-        </View>
+        <YStack backgroundColor="$gray3" padding="$4" borderRadius="$4" maxWidth={320}>
+          <Text fontSize="$3" color="$gray10" marginBottom="$1">You said:</Text>
+          <Text color="$gray12">{transcript}</Text>
+        </YStack>
       )}
 
       {response && (
-        <View className="bg-blue-100 p-4 rounded-lg max-w-sm">
-          <Text className="text-sm text-blue-600 mb-1">Assistant:</Text>
-          <Text className="text-blue-800">{response}</Text>
-        </View>
+        <YStack backgroundColor="$blue3" padding="$4" borderRadius="$4" maxWidth={320}>
+          <Text fontSize="$3" color="$blue10" marginBottom="$1">Assistant:</Text>
+          <Text color="$blue12">{response}</Text>
+        </YStack>
       )}
 
       {!apiKey ? (
-        <Text className="text-xs text-gray-500 text-center max-w-sm">
+        <Text fontSize="$2" color="$gray9" textAlign="center" maxWidth={320}>
           Demo mode: Add your OpenAI API key for full functionality
         </Text>
       ) : (
-        <Text className="text-xs text-gray-600 text-center max-w-sm">
+        <Text fontSize="$2" color="$gray10" textAlign="center" maxWidth={320}>
           Using OpenAI Whisper + GPT-4o + Web Speech API
         </Text>
       )}
-    </View>
+    </YStack>
   );
 }
