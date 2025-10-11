@@ -141,6 +141,8 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
   };
 
   const handlePress = async () => {
+    console.log("Talk button pressed, isRecording:", isRecording, "isProcessing:", isProcessing);
+
     if (!isSupported) {
       Alert.alert(
         "Not Supported",
@@ -150,8 +152,10 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     }
 
     if (isRecording) {
+      console.log("Stopping recording...");
       await stopRecording();
     } else {
+      console.log("Starting recording...");
       await startRecording();
     }
   };
@@ -206,6 +210,8 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         }
         justifyContent="center"
         alignItems="center"
+        pressStyle={{ opacity: 0.8, scale: 0.95 }}
+        animation="bouncy"
       >
         <Text
           fontSize="$5"
@@ -217,8 +223,8 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
             : isProcessing
               ? "Processing..."
               : isRecording
-                ? "Stop"
-                : "Talk"}
+                ? "🔴 Stop Recording"
+                : "🎤 Start Recording"}
         </Text>
       </Button>
 
