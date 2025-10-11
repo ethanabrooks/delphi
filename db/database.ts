@@ -17,10 +17,8 @@ export { getDatabase as db };
 
 // Initialize database with schema
 export const initializeDatabase = async () => {
-  // Check if we're in a supported environment
-  if (typeof window !== "undefined" && !window.indexedDB) {
-    throw new Error("SQLite not supported in this environment");
-  }
+  // expo-sqlite works on web using IndexedDB under the hood
+  // No need for explicit environment checks as expo-sqlite handles this
 
   // Ensure we have the expo instance
   if (!expoInstance) {

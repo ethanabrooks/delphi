@@ -23,9 +23,10 @@ export default function TodoList() {
   const { total, completed, pending } = useTodoStats();
 
   // Initialize database and load todos on mount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: initializeDb is stable from Zustand store
   useEffect(() => {
     initializeDb();
-  }, [initializeDb]);
+  }, []);
 
   const handleAddTodo = async () => {
     if (!newTodo.trim()) {

@@ -8,6 +8,86 @@ import type {
   UpdateTodoInput,
 } from "../types/todo";
 
+// Web fallback using localStorage
+// Detect web environment but exclude test environments
+const isWeb = typeof window !== "undefined" && typeof jest === "undefined";
+const STORAGE_KEY = "delphi_todos";
+
+class WebTodoService {
+  private static getTodos(): Todo[] {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private static saveTodos(todos: Todo[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
+  static async getAllTodos(): Promise<Todo[]> {
+    return WebTodoService.getTodos();
+  }
+
+  static async createTodo(input: CreateTodoInput): Promise<Todo> {
+    const todos = WebTodoService.getTodos();
+    const newTodo: Todo = {
+      id: Date.now(), // Simple ID generation for web
+      title: input.title,
+      description: input.description,
+      completed: false,
+      priority: input.priority || 1,
+      category: input.category,
+      due_date: input.due_date,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const updatedTodos = [newTodo, ...todos];
+    WebTodoService.saveTodos(updatedTodos);
+    return newTodo;
+  }
+
+  static async updateTodo(input: UpdateTodoInput): Promise<Todo | null> {
+    const todos = WebTodoService.getTodos();
+    const index = todos.findIndex((t) => t.id === input.id);
+    if (index === -1) return null;
+
+    const updatedTodo = {
+      ...todos[index],
+      ...input,
+      updated_at: new Date().toISOString(),
+    };
+    todos[index] = updatedTodo;
+    WebTodoService.saveTodos(todos);
+    return updatedTodo;
+  }
+
+  static async deleteTodo(id: number): Promise<boolean> {
+    const todos = WebTodoService.getTodos();
+    const filtered = todos.filter((t) => t.id !== id);
+    WebTodoService.saveTodos(filtered);
+    return filtered.length < todos.length;
+  }
+
+  static async toggleTodo(id: number): Promise<Todo | null> {
+    const todos = WebTodoService.getTodos();
+    const todo = todos.find((t) => t.id === id);
+    if (!todo) return null;
+
+    return WebTodoService.updateTodo({ id, completed: !todo.completed });
+  }
+
+  static async clearAllTodos(): Promise<void> {
+    WebTodoService.saveTodos([]);
+  }
+}
+
 interface TodoStore {
   todos: Todo[];
   isLoading: boolean;
@@ -40,12 +120,15 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   initializeDb: async () => {
     try {
       set({ isLoading: true, error: null });
-      await initializeDatabase();
+      if (!isWeb) {
+        await initializeDatabase();
+      }
       await get().loadTodos();
     } catch (error) {
-      set({ error: `Database initialization failed: ${error}` });
-    } finally {
-      set({ isLoading: false });
+      set({
+        error: `Database initialization failed: ${error}`,
+        isLoading: false,
+      });
     }
   },
 
@@ -53,7 +136,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   addTodo: async (input: CreateTodoInput) => {
     try {
       set({ isLoading: true, error: null });
-      const newTodo = await TodoService.createTodo(input);
+      const newTodo = await (isWeb
+        ? WebTodoService.createTodo(input)
+        : TodoService.createTodo(input));
       set((state) => ({
         todos: [newTodo, ...state.todos],
         isLoading: false,
@@ -66,7 +151,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   updateTodo: async (input: UpdateTodoInput) => {
     try {
       set({ isLoading: true, error: null });
-      const updatedTodo = await TodoService.updateTodo(input);
+      const updatedTodo = await (isWeb
+        ? WebTodoService.updateTodo(input)
+        : TodoService.updateTodo(input));
       if (updatedTodo) {
         set((state) => ({
           todos: state.todos.map((todo) =>
@@ -83,7 +170,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   deleteTodo: async (id: number) => {
     try {
       set({ isLoading: true, error: null });
-      const success = await TodoService.deleteTodo(id);
+      const success = await (isWeb
+        ? WebTodoService.deleteTodo(id)
+        : TodoService.deleteTodo(id));
       if (success) {
         set((state) => ({
           todos: state.todos.filter((todo) => todo.id !== id),
@@ -98,7 +187,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   toggleTodo: async (id: number) => {
     try {
       set({ isLoading: true, error: null });
-      const updatedTodo = await TodoService.toggleTodo(id);
+      const updatedTodo = await (isWeb
+        ? WebTodoService.toggleTodo(id)
+        : TodoService.toggleTodo(id));
       if (updatedTodo) {
         set((state) => ({
           todos: state.todos.map((todo) =>
@@ -133,7 +224,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   clearAllTodos: async () => {
     try {
       set({ isLoading: true, error: null });
-      await TodoService.clearAllTodos();
+      await (isWeb
+        ? WebTodoService.clearAllTodos()
+        : TodoService.clearAllTodos());
       set({ todos: [], isLoading: false });
     } catch (error) {
       set({ error: `Failed to clear todos: ${error}`, isLoading: false });
@@ -143,7 +236,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   loadTodos: async () => {
     try {
       set({ isLoading: true, error: null });
-      const todos = await TodoService.getAllTodos();
+      const todos = await (isWeb
+        ? WebTodoService.getAllTodos()
+        : TodoService.getAllTodos());
       set({ todos, isLoading: false });
     } catch (error) {
       set({ error: `Failed to load todos: ${error}`, isLoading: false });
