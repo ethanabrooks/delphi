@@ -88,6 +88,9 @@ class WebTodoService {
   }
 }
 
+// Platform-aware service selector
+const todoService = isWeb ? WebTodoService : TodoService;
+
 interface TodoStore {
   todos: Todo[];
   isLoading: boolean;
@@ -136,9 +139,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   addTodo: async (input: CreateTodoInput) => {
     try {
       set({ isLoading: true, error: null });
-      const newTodo = await (isWeb
-        ? WebTodoService.createTodo(input)
-        : TodoService.createTodo(input));
+      const newTodo = await todoService.createTodo(input);
       set((state) => ({
         todos: [newTodo, ...state.todos],
         isLoading: false,
@@ -151,9 +152,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   updateTodo: async (input: UpdateTodoInput) => {
     try {
       set({ isLoading: true, error: null });
-      const updatedTodo = await (isWeb
-        ? WebTodoService.updateTodo(input)
-        : TodoService.updateTodo(input));
+      const updatedTodo = await todoService.updateTodo(input);
       if (updatedTodo) {
         set((state) => ({
           todos: state.todos.map((todo) =>
@@ -170,9 +169,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   deleteTodo: async (id: number) => {
     try {
       set({ isLoading: true, error: null });
-      const success = await (isWeb
-        ? WebTodoService.deleteTodo(id)
-        : TodoService.deleteTodo(id));
+      const success = await todoService.deleteTodo(id);
       if (success) {
         set((state) => ({
           todos: state.todos.filter((todo) => todo.id !== id),
@@ -187,9 +184,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   toggleTodo: async (id: number) => {
     try {
       set({ isLoading: true, error: null });
-      const updatedTodo = await (isWeb
-        ? WebTodoService.toggleTodo(id)
-        : TodoService.toggleTodo(id));
+      const updatedTodo = await todoService.toggleTodo(id);
       if (updatedTodo) {
         set((state) => ({
           todos: state.todos.map((todo) =>
@@ -224,9 +219,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   clearAllTodos: async () => {
     try {
       set({ isLoading: true, error: null });
-      await (isWeb
-        ? WebTodoService.clearAllTodos()
-        : TodoService.clearAllTodos());
+      await todoService.clearAllTodos();
       set({ todos: [], isLoading: false });
     } catch (error) {
       set({ error: `Failed to clear todos: ${error}`, isLoading: false });
@@ -236,9 +229,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   loadTodos: async () => {
     try {
       set({ isLoading: true, error: null });
-      const todos = await (isWeb
-        ? WebTodoService.getAllTodos()
-        : TodoService.getAllTodos());
+      const todos = await todoService.getAllTodos();
       set({ todos, isLoading: false });
     } catch (error) {
       set({ error: `Failed to load todos: ${error}`, isLoading: false });
