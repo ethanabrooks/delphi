@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { Button, Text, YStack } from "tamagui";
+import OpenAIClient, {
+  type ChatCompletionMessage,
+} from "../services/openaiClient";
 import voiceService, { type VoiceRecording } from "../services/voiceService";
 
 interface TalkProps {
@@ -16,6 +19,18 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
   const [isSupported, setIsSupported] = useState(() =>
     voiceService.isSupported()
   );
+
+  const openAiClient = useMemo(() => {
+    if (!apiKey) {
+      return null;
+    }
+
+    try {
+      return new OpenAIClient(apiKey);
+    } catch {
+      return null;
+    }
+  }, [apiKey]);
 
   useEffect(() => {
     setIsSupported(voiceService.isSupported());
@@ -68,7 +83,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 
   const processVoiceInput = async (recording: VoiceRecording) => {
     try {
-      if (!apiKey) {
+      if (!openAiClient) {
         const demoTranscript = "Hello! This is a demo recording.";
         const demoResponse =
           "I heard you say: Hello! This is a demo recording. How can I help you today?";
@@ -93,26 +108,9 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 
       formData.append("model", "whisper-1");
 
-      const transcriptionResponse = await fetch(
-        "https://api.openai.com/v1/audio/transcriptions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: formData,
-        }
-      );
-
-      if (!transcriptionResponse.ok) {
-        throw new Error(
-          `Transcription failed: ${transcriptionResponse.status}`
-        );
-      }
-
-      const transcriptionData: { text?: string } =
-        await transcriptionResponse.json();
-      const userText = transcriptionData.text ?? "Could not transcribe audio";
+      const { text: transcriptionText } =
+        await openAiClient.createTranscription(formData);
+      const userText = transcriptionText || "Could not transcribe audio";
       setTranscript(userText);
 
       let aiResponse: string;
@@ -120,40 +118,26 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
       if (customProcessor) {
         aiResponse = await customProcessor(userText);
       } else {
-        const chatResponse = await fetch(
-          "https://api.openai.com/v1/chat/completions",
+        const messages: ChatCompletionMessage[] = [
           {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "gpt-4o",
-              messages: [
-                {
-                  role: "system",
-                  content:
-                    "You are a helpful voice assistant. Keep responses conversational and concise.",
-                },
-                {
-                  role: "user",
-                  content: userText,
-                },
-              ],
-              max_tokens: 150,
-            }),
-          }
-        );
+            role: "system",
+            content:
+              "You are a helpful voice assistant. Keep responses conversational and concise.",
+          },
+          {
+            role: "user",
+            content: userText,
+          },
+        ];
 
-        if (!chatResponse.ok) {
-          throw new Error(`Chat API failed: ${chatResponse.status}`);
-        }
+        const chatResult = await openAiClient.createChatCompletion({
+          model: "gpt-4o",
+          messages,
+          maxTokens: 150,
+        });
 
-        const chatData = await chatResponse.json();
         aiResponse =
-          chatData.choices?.[0]?.message?.content ??
-          "Sorry, I could not process your request.";
+          chatResult.content || "Sorry, I could not process your request.";
       }
 
       setResponse(aiResponse);
