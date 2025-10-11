@@ -1,14 +1,14 @@
 // Using built-in Jest matchers from @testing-library/react-native v12.4+
 
 // Mock react-native-reanimated
-jest.mock('react-native-reanimated', () => {
-  const Reanimated = require('react-native-reanimated/mock');
+jest.mock("react-native-reanimated", () => {
+  const Reanimated = require("react-native-reanimated/mock");
   Reanimated.default.call = () => {};
   return Reanimated;
 });
 
 // Mock expo-sqlite
-jest.mock('expo-sqlite', () => ({
+jest.mock("expo-sqlite", () => ({
   openDatabase: jest.fn(() => ({
     exec: jest.fn((queries, readOnly, callback) => callback(null, [])),
     transaction: jest.fn(),
@@ -18,8 +18,8 @@ jest.mock('expo-sqlite', () => ({
 // AsyncStorage not used in this project, skip mock
 
 // Mock react-native Alert
-jest.mock('react-native', () => {
-  const RN = jest.requireActual('react-native');
+jest.mock("react-native", () => {
+  const RN = jest.requireActual("react-native");
   RN.Alert = {
     alert: jest.fn(),
   };
@@ -27,15 +27,15 @@ jest.mock('react-native', () => {
 });
 
 // Mock Tamagui components
-jest.mock('tamagui', () => ({
+jest.mock("tamagui", () => ({
   TamaguiProvider: ({ children }) => children,
   createTamagui: jest.fn(),
   config: {},
-  Button: 'Button',
-  Card: 'Card',
-  Input: 'Input',
-  Text: 'Text',
-  YStack: 'YStack',
-  XStack: 'XStack',
-  ScrollView: 'ScrollView',
+  Button: "Button",
+  Card: "Card",
+  Input: "Input",
+  Text: "Text",
+  YStack: "YStack",
+  XStack: "XStack",
+  ScrollView: "ScrollView",
 }));

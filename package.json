@@ -10,8 +10,12 @@
     "web": "expo start --web",
     "build": "expo build",
     "test": "jest",
-    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
-    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format": "biome format .",
+    "format:fix": "biome format --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
     "prepare": "husky"
   },
   "dependencies": {
@@ -42,14 +46,12 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.5",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",
     "@types/react": "^19.1.0",
-    "@typescript-eslint/eslint-plugin": "^8.46.0",
-    "@typescript-eslint/parser": "^8.46.0",
     "babel-preset-expo": "^54.0.4",
-    "eslint": "^9.37.0",
     "husky": "^9.1.7",
     "jest-expo": "^54.0.12",
     "lint-staged": "^16.2.4",
@@ -57,8 +59,8 @@
     "typescript": "^5.9.3"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix"
+    "*.{js,jsx,ts,tsx,json}": [
+      "biome format --write --no-errors-on-unmatched"
     ]
   },
   "private": true,

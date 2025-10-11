@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Alert } from "react-native";
-import { YStack, XStack, Text, Button, Input, ScrollView, Card } from 'tamagui';
-import { Priority, PRIORITY_LABELS } from "../types/todo";
-import { useTodoStore, useTodoStats } from "../stores/simpleTodoStore";
+import { Button, Card, Input, ScrollView, Text, XStack, YStack } from "tamagui";
+import { useTodoStats, useTodoStore } from "../stores/simpleTodoStore";
+import { PRIORITY_LABELS, type Priority } from "../types/todo";
 
-console.log('📝 TodoList.tsx loading...')
-console.log('📦 YStack:', typeof YStack, 'from tamagui')
-console.log('📦 Card:', typeof Card, 'from tamagui')
-console.log('📦 Input:', typeof Input, 'from tamagui')
-console.log('📦 ScrollView:', typeof ScrollView, 'from tamagui')
+console.log("📝 TodoList.tsx loading...");
+console.log("📦 YStack:", typeof YStack, "from tamagui");
+console.log("📦 Card:", typeof Card, "from tamagui");
+console.log("📦 Input:", typeof Input, "from tamagui");
+console.log("📦 ScrollView:", typeof ScrollView, "from tamagui");
 
 // Removed all styled components - using Tamagui components directly
 
@@ -24,7 +24,7 @@ export default function TodoList() {
     toggleTodo,
     initializeDb,
     isLoading,
-    error
+    error,
   } = useTodoStore();
   const { total, completed, pending } = useTodoStats();
 
@@ -67,30 +67,45 @@ export default function TodoList() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  console.log('📝 TodoList rendering, todos count:', todos.length)
+  console.log("📝 TodoList rendering, todos count:", todos.length);
 
   return (
     <YStack flex={1} padding="$4">
-      <Text fontSize="$7" fontWeight="bold" color="$gray12" marginBottom="$6" textAlign="center">
+      <Text
+        fontSize="$7"
+        fontWeight="bold"
+        color="$gray12"
+        marginBottom="$6"
+        textAlign="center"
+      >
         My Todo List
       </Text>
 
       {/* Error display */}
       {error && (
         <Card backgroundColor="$red3" padding="$3" marginBottom="$4">
-          <Text color="$red11" textAlign="center">{error}</Text>
+          <Text color="$red11" textAlign="center">
+            {error}
+          </Text>
         </Card>
       )}
 
       {/* Loading indicator */}
       {isLoading && (
         <Card backgroundColor="$blue3" padding="$3" marginBottom="$4">
-          <Text color="$blue11" textAlign="center">Loading...</Text>
+          <Text color="$blue11" textAlign="center">
+            Loading...
+          </Text>
         </Card>
       )}
 
       {/* Add new todo */}
-      <Card backgroundColor="$background" padding="$4" marginBottom="$4" elevate>
+      <Card
+        backgroundColor="$background"
+        padding="$4"
+        marginBottom="$4"
+        elevate
+      >
         <Input
           value={newTodo}
           onChangeText={setNewTodo}
@@ -105,7 +120,9 @@ export default function TodoList() {
 
         {/* Priority selection */}
         <XStack marginBottom="$3" alignItems="center">
-          <Text color="$gray11" marginRight="$3">Priority:</Text>
+          <Text color="$gray11" marginRight="$3">
+            Priority:
+          </Text>
           {([1, 2, 3] as Priority[]).map((priority) => (
             <Button
               key={priority}
@@ -159,7 +176,9 @@ export default function TodoList() {
                     <Text
                       fontSize="$5"
                       fontWeight="500"
-                      textDecorationLine={todo.completed ? "line-through" : "none"}
+                      textDecorationLine={
+                        todo.completed ? "line-through" : "none"
+                      }
                       color={todo.completed ? "$gray10" : "$gray12"}
                     >
                       {todo.title}

@@ -1,12 +1,12 @@
 import { create } from "zustand";
-import {
-  Todo,
-  CreateTodoInput,
-  UpdateTodoInput,
-  Priority,
-} from "../types/todo";
-import { TodoService } from "../services/todoService";
 import { initializeDatabase } from "../db/database";
+import { TodoService } from "../services/todoService";
+import type {
+  CreateTodoInput,
+  Priority,
+  Todo,
+  UpdateTodoInput,
+} from "../types/todo";
 
 interface TodoStore {
   todos: Todo[];
@@ -157,9 +157,11 @@ export const useTodoStats = () => {
 
   // Calculate stats from current todos in store
   const total = todos.length;
-  const completed = todos.filter(t => t.completed).length;
+  const completed = todos.filter((t) => t.completed).length;
   const pending = total - completed;
-  const highPriority = todos.filter(t => t.priority === 3 && !t.completed).length;
+  const highPriority = todos.filter(
+    (t) => t.priority === 3 && !t.completed
+  ).length;
 
   return { total, completed, pending, highPriority };
 };

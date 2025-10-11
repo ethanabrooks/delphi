@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Platform } from "react-native";
-import { YStack, Text, Button } from 'tamagui';
+import { Button, Text, YStack } from "tamagui";
 
 interface TalkProps {
   apiKey?: string;
@@ -32,7 +32,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     if (Platform.OS !== "web") {
       Alert.alert(
         "Platform not supported",
-        "This component is designed for web use",
+        "This component is designed for web use"
       );
       return;
     }
@@ -66,13 +66,13 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
           // Demo mode
           setTranscript("Hello! This is a web demo recording.");
           setResponse(
-            "I heard you say: Hello! This is a web demo recording. How can I help you today?",
+            "I heard you say: Hello! This is a web demo recording. How can I help you today?"
           );
 
           // Use Web Speech API for TTS if available
           if ("speechSynthesis" in window) {
             const utterance = new SpeechSynthesisUtterance(
-              "I heard you say: Hello! This is a web demo recording. How can I help you today?",
+              "I heard you say: Hello! This is a web demo recording. How can I help you today?"
             );
             speechSynthesis.speak(utterance);
           }
@@ -87,7 +87,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
       setIsRecording(false);
       Alert.alert(
         "Recording Error",
-        "Failed to access microphone. Please ensure microphone permissions are granted.",
+        "Failed to access microphone. Please ensure microphone permissions are granted."
       );
     }
   };
@@ -123,12 +123,12 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
                 Authorization: `Bearer ${apiKey}`,
               },
               body: formData,
-            },
+            }
           );
 
           if (!transcriptionResponse.ok) {
             throw new Error(
-              `Transcription failed: ${transcriptionResponse.status}`,
+              `Transcription failed: ${transcriptionResponse.status}`
             );
           }
 
@@ -167,7 +167,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
                   ],
                   max_tokens: 150,
                 }),
-              },
+              }
             );
 
             if (!chatResponse.ok) {
@@ -204,7 +204,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     if (!isSupported) {
       Alert.alert(
         "Not Supported",
-        "Web Audio API is not supported in this browser",
+        "Web Audio API is not supported in this browser"
       );
       return;
     }
@@ -217,13 +217,24 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
   };
 
   return (
-    <YStack flex={1} justifyContent="center" alignItems="center" padding="$6" gap="$6">
+    <YStack
+      flex={1}
+      justifyContent="center"
+      alignItems="center"
+      padding="$6"
+      gap="$6"
+    >
       <Text fontSize="$10" fontWeight="bold" color="$gray12" marginBottom="$4">
         Voice Assistant
       </Text>
 
       {!isSupported && (
-        <YStack backgroundColor="$yellow3" padding="$4" borderRadius="$4" marginBottom="$4">
+        <YStack
+          backgroundColor="$yellow3"
+          padding="$4"
+          borderRadius="$4"
+          marginBottom="$4"
+        >
           <Text color="$yellow11" textAlign="center">
             Web Audio not supported in this browser. Please use Chrome, Firefox,
             or Safari.
@@ -265,15 +276,29 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
       </Button>
 
       {transcript && (
-        <YStack backgroundColor="$gray3" padding="$4" borderRadius="$4" maxWidth={320}>
-          <Text fontSize="$3" color="$gray10" marginBottom="$1">You said:</Text>
+        <YStack
+          backgroundColor="$gray3"
+          padding="$4"
+          borderRadius="$4"
+          maxWidth={320}
+        >
+          <Text fontSize="$3" color="$gray10" marginBottom="$1">
+            You said:
+          </Text>
           <Text color="$gray12">{transcript}</Text>
         </YStack>
       )}
 
       {response && (
-        <YStack backgroundColor="$blue3" padding="$4" borderRadius="$4" maxWidth={320}>
-          <Text fontSize="$3" color="$blue10" marginBottom="$1">Assistant:</Text>
+        <YStack
+          backgroundColor="$blue3"
+          padding="$4"
+          borderRadius="$4"
+          maxWidth={320}
+        >
+          <Text fontSize="$3" color="$blue10" marginBottom="$1">
+            Assistant:
+          </Text>
           <Text color="$blue12">{response}</Text>
         </YStack>
       )}

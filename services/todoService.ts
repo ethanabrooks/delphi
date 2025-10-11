@@ -1,7 +1,12 @@
-import { eq, desc } from 'drizzle-orm';
-import { db, mapTodoRowToTodo } from '../db/database';
-import { todos } from '../db/schema';
-import type { Todo, CreateTodoInput, UpdateTodoInput, Priority } from '../types/todo';
+import { desc, eq } from "drizzle-orm";
+import { db, mapTodoRowToTodo } from "../db/database";
+import { todos } from "../db/schema";
+import type {
+  CreateTodoInput,
+  Priority,
+  Todo,
+  UpdateTodoInput,
+} from "../types/todo";
 
 export class TodoService {
   static async getAllTodos(): Promise<Todo[]> {
@@ -64,20 +69,18 @@ export class TodoService {
 
   static async deleteTodo(id: number): Promise<boolean> {
     const database = await db();
-    const result = await database
-      .delete(todos)
-      .where(eq(todos.id, id));
+    const result = await database.delete(todos).where(eq(todos.id, id));
 
     return result.changes > 0;
   }
 
   static async toggleTodo(id: number): Promise<Todo | null> {
     // First get the current state
-    const current = await this.getTodoById(id);
+    const current = await TodoService.getTodoById(id);
     if (!current) return null;
 
     // Toggle the completed state
-    return this.updateTodo({
+    return TodoService.updateTodo({
       id,
       completed: !current.completed,
     });
@@ -127,12 +130,14 @@ export class TodoService {
     pending: number;
     highPriority: number;
   }> {
-    const allTodos = await this.getAllTodos();
+    const allTodos = await TodoService.getAllTodos();
 
     const total = allTodos.length;
-    const completed = allTodos.filter(t => t.completed).length;
+    const completed = allTodos.filter((t) => t.completed).length;
     const pending = total - completed;
-    const highPriority = allTodos.filter(t => t.priority === 3 && !t.completed).length;
+    const highPriority = allTodos.filter(
+      (t) => t.priority === 3 && !t.completed
+    ).length;
 
     return { total, completed, pending, highPriority };
   }
