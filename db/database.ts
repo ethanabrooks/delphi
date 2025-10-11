@@ -28,7 +28,11 @@ export const initializeDatabase = async () => {
   }
 
   // Create the todos table if it doesn't exist
-  await expoInstance!.execAsync(`
+  if (!expoInstance) {
+    throw new Error("SQLite database not initialized");
+  }
+
+  await expoInstance.execAsync(`
     CREATE TABLE IF NOT EXISTS todos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,

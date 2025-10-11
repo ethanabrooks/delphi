@@ -1,14 +1,8 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { Button, Card, Input, ScrollView, Text, XStack, YStack } from "tamagui";
 import { useTodoStats, useTodoStore } from "../stores/simpleTodoStore";
 import { PRIORITY_LABELS, type Priority } from "../types/todo";
-
-console.log("📝 TodoList.tsx loading...");
-console.log("📦 YStack:", typeof YStack, "from tamagui");
-console.log("📦 Card:", typeof Card, "from tamagui");
-console.log("📦 Input:", typeof Input, "from tamagui");
-console.log("📦 ScrollView:", typeof ScrollView, "from tamagui");
 
 // Removed all styled components - using Tamagui components directly
 
@@ -31,7 +25,7 @@ export default function TodoList() {
   // Initialize database and load todos on mount
   useEffect(() => {
     initializeDb();
-  }, []);
+  }, [initializeDb]);
 
   const handleAddTodo = async () => {
     if (!newTodo.trim()) {
@@ -66,8 +60,6 @@ export default function TodoList() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
-
-  console.log("📝 TodoList rendering, todos count:", todos.length);
 
   return (
     <YStack flex={1} padding="$4">
@@ -116,6 +108,7 @@ export default function TodoList() {
           padding="$3"
           marginBottom="$3"
           multiline
+          testID="todo-input"
         />
 
         {/* Priority selection */}
@@ -127,10 +120,11 @@ export default function TodoList() {
             <Button
               key={priority}
               onPress={() => setSelectedPriority(priority)}
-              theme={selectedPriority === priority ? "blue" : "gray"}
+              theme={selectedPriority === priority ? "blue" : "light"}
               size="$2"
               borderRadius="$10"
               marginRight="$2"
+              testID={`priority-${priority}-button`}
             >
               {PRIORITY_LABELS[priority]}
             </Button>
@@ -143,6 +137,7 @@ export default function TodoList() {
           theme="blue"
           size="$4"
           borderRadius="$4"
+          testID="add-todo-button"
         >
           {isLoading ? "Adding..." : "Add Todo"}
         </Button>

@@ -7,13 +7,6 @@ import tamaguiConfig from "./tamagui.config";
 
 type AgentType = "talk" | "todo";
 
-console.log("🚀 App.tsx loading...");
-console.log("🔧 tamaguiConfig:", tamaguiConfig);
-console.log("📦 TamaguiProvider:", typeof TamaguiProvider);
-console.log("📦 YStack:", typeof YStack, "from tamagui");
-console.log("📦 Button:", typeof Button, "from tamagui");
-console.log("📦 Text:", typeof Text, "from tamagui");
-
 export default function App() {
   const [agentType, setAgentType] = useState<AgentType>("talk");
 
@@ -28,8 +21,6 @@ export default function App() {
         return <Talk apiKey={OPENAI_API_KEY} />;
     }
   };
-
-  console.log("🎨 App rendering with agentType:", agentType);
 
   return (
     <TamaguiProvider config={tamaguiConfig}>
@@ -53,7 +44,7 @@ export default function App() {
           >
             <Button
               onPress={() => setAgentType("talk")}
-              theme={agentType === "talk" ? "blue" : "gray"}
+              theme={agentType === "talk" ? "light_blue" : "light"}
               size="$3"
               borderRadius="$10"
             >
@@ -62,7 +53,7 @@ export default function App() {
 
             <Button
               onPress={() => setAgentType("todo")}
-              theme={agentType === "todo" ? "green" : "gray"}
+              theme={agentType === "todo" ? "light_green" : "light"}
               size="$3"
               borderRadius="$10"
             >

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { spawn } = require("child_process");
+const { spawn } = require("node:child_process");
 
 // eslint-disable-next-line no-console
 console.log("🔍 Checking for bundle/import issues...");
@@ -41,9 +41,9 @@ metro.stderr.on("data", (data) => {
     hasErrors = true;
     clearTimeout(timeout);
     metro.kill();
-    // eslint-disable-next-line no-console
+    // biome-ignore lint/suspicious/noConsole: surfaced to STDERR during CI failures
     console.error("❌ Bundle/import errors detected:");
-    // eslint-disable-next-line no-console
+    // biome-ignore lint/suspicious/noConsole: surfaced to STDERR during CI failures
     console.error(error);
     process.exit(1);
   }
@@ -64,7 +64,7 @@ metro.on("close", (code) => {
 
 metro.on("error", (err) => {
   clearTimeout(timeout);
-  // eslint-disable-next-line no-console
+  // biome-ignore lint/suspicious/noConsole: surfaced to STDERR during CI failures
   console.error("❌ Failed to start bundler:", err.message);
   process.exit(1);
 });

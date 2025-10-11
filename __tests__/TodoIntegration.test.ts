@@ -1,12 +1,14 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
-import {
-  mockTodoServiceForTesting,
-  resetTestData,
-} from "../__test-utils__/testUtils";
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import { resetTestData } from "../__test-utils__/testUtils";
+import { TodoService } from "../services/todoService";
 
 // Mock the TodoService to use our in-memory test implementation
 // This maintains the exact same interface as the real service but uses in-memory data
-vi.mock("../services/todoService", () => mockTodoServiceForTesting());
+jest.mock("../services/todoService", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { mockTodoServiceForTesting } = require("../__test-utils__/testUtils");
+  return mockTodoServiceForTesting();
+});
 
 describe("TodoService Integration Test", () => {
   beforeEach(() => {
@@ -14,16 +16,12 @@ describe("TodoService Integration Test", () => {
   });
 
   test("should return empty array when no todos exist", async () => {
-    const { TodoService } = await import("../services/todoService");
-
     const result = await TodoService.getAllTodos();
 
     expect(result).toEqual([]);
   });
 
   test("should create and retrieve todos", async () => {
-    const { TodoService } = await import("../services/todoService");
-
     // Create a todo
     const newTodo = await TodoService.createTodo({
       title: "Test Todo",
@@ -50,8 +48,6 @@ describe("TodoService Integration Test", () => {
   });
 
   test("should update and toggle todos", async () => {
-    const { TodoService } = await import("../services/todoService");
-
     // Create a todo
     const newTodo = await TodoService.createTodo({
       title: "Test Todo",
@@ -79,8 +75,6 @@ describe("TodoService Integration Test", () => {
   });
 
   test("should delete todos", async () => {
-    const { TodoService } = await import("../services/todoService");
-
     // Create a todo
     const newTodo = await TodoService.createTodo({
       title: "Test Todo",
@@ -100,8 +94,6 @@ describe("TodoService Integration Test", () => {
   });
 
   test("should filter todos by completion status", async () => {
-    const { TodoService } = await import("../services/todoService");
-
     // Create some todos
     await TodoService.createTodo({ title: "Todo 1" });
     const todo2 = await TodoService.createTodo({ title: "Todo 2" });
@@ -121,8 +113,6 @@ describe("TodoService Integration Test", () => {
   });
 
   test("should filter todos by priority", async () => {
-    const { TodoService } = await import("../services/todoService");
-
     // Create todos with different priorities
     await TodoService.createTodo({ title: "Low Priority", priority: 1 });
     await TodoService.createTodo({ title: "Medium Priority", priority: 2 });
@@ -139,8 +129,6 @@ describe("TodoService Integration Test", () => {
   });
 
   test("should get todo statistics", async () => {
-    const { TodoService } = await import("../services/todoService");
-
     // Create test data
     await TodoService.createTodo({ title: "Todo 1", priority: 3 });
     const todo2 = await TodoService.createTodo({
