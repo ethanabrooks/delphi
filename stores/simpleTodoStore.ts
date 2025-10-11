@@ -5,44 +5,19 @@ import {
   UpdateTodoInput,
   Priority,
 } from "../types/todo";
-
-// Simple localStorage persistence without the persist middleware
-const STORAGE_KEY = "voice-agent-todos";
-
-const saveToStorage = (todos: Todo[]) => {
-  try {
-    if (typeof window !== "undefined" && window.localStorage) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
-    }
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn("Failed to save todos to localStorage:", error);
-  }
-};
-
-const loadFromStorage = (): Todo[] => {
-  try {
-    if (typeof window !== "undefined" && window.localStorage) {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    }
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn("Failed to load todos from localStorage:", error);
-  }
-  return [];
-};
+import { TodoService } from "../services/todoService";
+import { initializeDatabase } from "../db/database";
 
 interface TodoStore {
   todos: Todo[];
+  isLoading: boolean;
+  error: string | null;
 
   // Actions
-  addTodo: (input: CreateTodoInput) => void;
-  updateTodo: (input: UpdateTodoInput) => void;
-  deleteTodo: (id: number) => void;
-  toggleTodo: (id: number) => void;
+  addTodo: (input: CreateTodoInput) => Promise<void>;
+  updateTodo: (input: UpdateTodoInput) => Promise<void>;
+  deleteTodo: (id: number) => Promise<void>;
+  toggleTodo: (id: number) => Promise<void>;
 
   // Computed getters
   getTodoById: (id: number) => Todo | undefined;
@@ -51,73 +26,90 @@ interface TodoStore {
   getTodosByPriority: (priority: Priority) => Todo[];
 
   // Utility
-  clearAllTodos: () => void;
-  loadTodos: () => void;
+  clearAllTodos: () => Promise<void>;
+  loadTodos: () => Promise<void>;
+  initializeDb: () => Promise<void>;
 }
 
 export const useTodoStore = create<TodoStore>((set, get) => ({
   todos: [],
+  isLoading: false,
+  error: null,
+
+  // Initialize database
+  initializeDb: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      await initializeDatabase();
+      await get().loadTodos();
+    } catch (error) {
+      set({ error: `Database initialization failed: ${error}` });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
   // Actions
-  addTodo: (input: CreateTodoInput) => {
-    const now = new Date().toISOString();
-    const newTodo: Todo = {
-      id: Date.now(), // Simple ID generation
-      title: input.title,
-      description: input.description,
-      completed: false,
-      priority: input.priority || 1,
-      category: input.category,
-      due_date: input.due_date,
-      created_at: now,
-      updated_at: now,
-    };
-
-    set((state) => {
-      const newTodos = [newTodo, ...state.todos];
-      saveToStorage(newTodos);
-      return { todos: newTodos };
-    });
+  addTodo: async (input: CreateTodoInput) => {
+    try {
+      set({ isLoading: true, error: null });
+      const newTodo = await TodoService.createTodo(input);
+      set((state) => ({
+        todos: [newTodo, ...state.todos],
+        isLoading: false,
+      }));
+    } catch (error) {
+      set({ error: `Failed to add todo: ${error}`, isLoading: false });
+    }
   },
 
-  updateTodo: (input: UpdateTodoInput) => {
-    set((state) => {
-      const newTodos = state.todos.map((todo) =>
-        todo.id === input.id
-          ? {
-              ...todo,
-              ...input,
-              updated_at: new Date().toISOString(),
-            }
-          : todo,
-      );
-      saveToStorage(newTodos);
-      return { todos: newTodos };
-    });
+  updateTodo: async (input: UpdateTodoInput) => {
+    try {
+      set({ isLoading: true, error: null });
+      const updatedTodo = await TodoService.updateTodo(input);
+      if (updatedTodo) {
+        set((state) => ({
+          todos: state.todos.map((todo) =>
+            todo.id === input.id ? updatedTodo : todo
+          ),
+          isLoading: false,
+        }));
+      }
+    } catch (error) {
+      set({ error: `Failed to update todo: ${error}`, isLoading: false });
+    }
   },
 
-  deleteTodo: (id: number) => {
-    set((state) => {
-      const newTodos = state.todos.filter((todo) => todo.id !== id);
-      saveToStorage(newTodos);
-      return { todos: newTodos };
-    });
+  deleteTodo: async (id: number) => {
+    try {
+      set({ isLoading: true, error: null });
+      const success = await TodoService.deleteTodo(id);
+      if (success) {
+        set((state) => ({
+          todos: state.todos.filter((todo) => todo.id !== id),
+          isLoading: false,
+        }));
+      }
+    } catch (error) {
+      set({ error: `Failed to delete todo: ${error}`, isLoading: false });
+    }
   },
 
-  toggleTodo: (id: number) => {
-    set((state) => {
-      const newTodos = state.todos.map((todo) =>
-        todo.id === id
-          ? {
-              ...todo,
-              completed: !todo.completed,
-              updated_at: new Date().toISOString(),
-            }
-          : todo,
-      );
-      saveToStorage(newTodos);
-      return { todos: newTodos };
-    });
+  toggleTodo: async (id: number) => {
+    try {
+      set({ isLoading: true, error: null });
+      const updatedTodo = await TodoService.toggleTodo(id);
+      if (updatedTodo) {
+        set((state) => ({
+          todos: state.todos.map((todo) =>
+            todo.id === id ? updatedTodo : todo
+          ),
+          isLoading: false,
+        }));
+      }
+    } catch (error) {
+      set({ error: `Failed to toggle todo: ${error}`, isLoading: false });
+    }
   },
 
   // Computed getters
@@ -138,73 +130,36 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   },
 
   // Utility
-  clearAllTodos: () => {
-    set({ todos: [] });
-    saveToStorage([]);
+  clearAllTodos: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      await TodoService.clearAllTodos();
+      set({ todos: [], isLoading: false });
+    } catch (error) {
+      set({ error: `Failed to clear todos: ${error}`, isLoading: false });
+    }
   },
 
-  loadTodos: () => {
-    const currentTodos = get().todos;
-    const storedTodos = loadFromStorage();
-
-    // Only update if todos actually changed
-    if (JSON.stringify(currentTodos) !== JSON.stringify(storedTodos)) {
-      set({ todos: storedTodos });
+  loadTodos: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      const todos = await TodoService.getAllTodos();
+      set({ todos, isLoading: false });
+    } catch (error) {
+      set({ error: `Failed to load todos: ${error}`, isLoading: false });
     }
   },
 }));
 
-// Memoized selector for todo stats to prevent infinite loops
-let lastTodos: Todo[] | undefined;
-let lastStats:
-  | { total: number; completed: number; pending: number; highPriority: number }
-  | undefined;
-
-const selectTodoStats = (state: { todos: Todo[] }) => {
-  // Only recalculate if todos array changed
-  if (state.todos === lastTodos && lastStats) {
-    return lastStats;
-  }
-
-  // Check if todos content actually changed (not just reference)
-  const todosChanged =
-    !lastTodos ||
-    lastTodos.length !== state.todos.length ||
-    lastTodos.some(
-      (todo, i) =>
-        state.todos[i]?.id !== todo.id ||
-        state.todos[i]?.completed !== todo.completed ||
-        state.todos[i]?.priority !== todo.priority,
-    );
-
-  if (!todosChanged && lastStats) {
-    lastTodos = state.todos; // Update reference but keep stats
-    return lastStats;
-  }
-
-  // Recalculate stats
-  const total = state.todos.length;
-  const completed = state.todos.filter((t) => t.completed).length;
-  const pending = total - completed;
-  const highPriority = state.todos.filter(
-    (t) => t.priority === 3 && !t.completed,
-  ).length;
-
-  const stats = {
-    total,
-    completed,
-    pending,
-    highPriority,
-  };
-
-  lastTodos = state.todos;
-  lastStats = stats;
-
-  return stats;
-};
-
-// Helper hook for common computed values
+// Helper hook for stats using the service
 export const useTodoStats = () => {
-  return useTodoStore(selectTodoStats);
-};
+  const todos = useTodoStore((state) => state.todos);
 
+  // Calculate stats from current todos in store
+  const total = todos.length;
+  const completed = todos.filter(t => t.completed).length;
+  const pending = total - completed;
+  const highPriority = todos.filter(t => t.priority === 3 && !t.completed).length;
+
+  return { total, completed, pending, highPriority };
+};

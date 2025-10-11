@@ -14,23 +14,30 @@ export default function TodoList() {
   const [newTodo, setNewTodo] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<Priority>(1);
 
-  // Zustand hooks - much cleaner than database calls!
-  const { todos, addTodo, deleteTodo, toggleTodo, loadTodos } =
-    useTodoStore();
+  // Zustand hooks with SQLite database
+  const {
+    todos,
+    addTodo,
+    deleteTodo,
+    toggleTodo,
+    initializeDb,
+    isLoading,
+    error
+  } = useTodoStore();
   const { total, completed, pending } = useTodoStats();
 
-  // Load todos from localStorage on mount
+  // Initialize database and load todos on mount
   useEffect(() => {
-    loadTodos();
+    initializeDb();
   }, []);
 
-  const handleAddTodo = () => {
+  const handleAddTodo = async () => {
     if (!newTodo.trim()) {
       Alert.alert("Error", "Please enter a todo item");
       return;
     }
 
-    addTodo({
+    await addTodo({
       title: newTodo.trim(),
       priority: selectedPriority,
     });
@@ -39,8 +46,8 @@ export default function TodoList() {
     setSelectedPriority(1);
   };
 
-  const handleToggleTodo = (todoId: number) => {
-    toggleTodo(todoId);
+  const handleToggleTodo = async (todoId: number) => {
+    await toggleTodo(todoId);
   };
 
   const handleDeleteTodo = (todoId: number, title: string) => {
@@ -49,7 +56,7 @@ export default function TodoList() {
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => deleteTodo(todoId),
+        onPress: async () => await deleteTodo(todoId),
       },
     ]);
   };
@@ -63,6 +70,20 @@ export default function TodoList() {
       <Text className="text-2xl font-bold text-gray-800 mb-6 text-center">
         My Todo List
       </Text>
+
+      {/* Error display */}
+      {error && (
+        <View className="bg-red-100 p-3 rounded-lg mb-4">
+          <Text className="text-red-800 text-center">{error}</Text>
+        </View>
+      )}
+
+      {/* Loading indicator */}
+      {isLoading && (
+        <View className="bg-blue-100 p-3 rounded-lg mb-4">
+          <Text className="text-blue-800 text-center">Loading...</Text>
+        </View>
+      )}
 
       {/* Add new todo */}
       <View className="bg-white p-4 rounded-lg shadow-sm mb-4">
@@ -99,9 +120,14 @@ export default function TodoList() {
 
         <TouchableOpacity
           onPress={handleAddTodo}
-          className="bg-blue-500 py-3 rounded-lg"
+          disabled={isLoading}
+          className={`py-3 rounded-lg ${
+            isLoading ? "bg-gray-400" : "bg-blue-500"
+          }`}
         >
-          <Text className="text-white text-center font-semibold">Add Todo</Text>
+          <Text className="text-white text-center font-semibold">
+            {isLoading ? "Adding..." : "Add Todo"}
+          </Text>
         </TouchableOpacity>
       </View>
 
