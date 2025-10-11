@@ -1,9 +1,9 @@
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
-import { TamaguiProvider, YStack, XStack, Text, Button } from "tamagui";
-import tamaguiConfig from "./tamagui.config";
+import { Button, TamaguiProvider, Text, XStack, YStack } from "tamagui";
 import Talk from "./components/Talk";
 import TodoList from "./components/TodoList";
+import tamaguiConfig from "./tamagui.config";
 
 type AgentType = "talk" | "todo";
 
