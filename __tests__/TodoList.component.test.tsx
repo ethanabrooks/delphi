@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { render, screen, waitFor } from "@testing-library/react-native";
+import { act, render, screen, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import { resetTestData } from "../__test-utils__/testUtils";
 import TodoList from "../components/TodoList";
@@ -19,10 +19,12 @@ describe("TodoList Component - Tamagui Mock Tests", () => {
   beforeEach(() => {
     resetTestData();
     // Reset store state
-    useTodoStore.setState({
-      todos: [],
-      isLoading: false,
-      error: null,
+    act(() => {
+      useTodoStore.setState({
+        todos: [],
+        isLoading: false,
+        error: null,
+      });
     });
     mockAlert.mockClear();
   });
@@ -64,10 +66,12 @@ describe("TodoList Component - Tamagui Mock Tests", () => {
 
   test("should show loading state correctly", () => {
     // Set loading state in store
-    useTodoStore.setState({
-      todos: [],
-      isLoading: true,
-      error: null,
+    act(() => {
+      useTodoStore.setState({
+        todos: [],
+        isLoading: true,
+        error: null,
+      });
     });
 
     render(<TodoList />);

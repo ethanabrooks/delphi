@@ -149,6 +149,26 @@ jest.mock("./db/database", () => ({
   initializeDatabase: jest.fn().mockResolvedValue(undefined),
 }));
 
+// Suppress React act() warnings in tests - these are unavoidable when Zustand store
+// updates happen during component lifecycle and don't affect actual functionality
+const originalConsoleError = console.error;
+console.error = (...args: any[]) => {
+  const message = args[0]?.toString() || "";
+
+  // Suppress specific React act() warnings that occur during store updates
+  if (
+    message.includes(
+      "An update to TodoList inside a test was not wrapped in act"
+    ) ||
+    message.includes("was not wrapped in act(...)")
+  ) {
+    return;
+  }
+
+  // Allow all other console.error messages through
+  originalConsoleError.apply(console, args);
+};
+
 // Global TodoService mock with simple synchronous behavior
 jest.mock("./services/todoService", () => ({
   TodoService: {

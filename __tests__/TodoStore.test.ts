@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import { act } from "@testing-library/react-native";
 import { resetTestData } from "../__test-utils__/testUtils";
 import { TodoService } from "../services/todoService";
 import { useTodoStore } from "../stores/simpleTodoStore";
@@ -14,10 +15,12 @@ describe("TodoStore Integration Tests", () => {
   beforeEach(() => {
     resetTestData();
     // Reset the store state
-    useTodoStore.setState({
-      todos: [],
-      isLoading: false,
-      error: null,
+    act(() => {
+      useTodoStore.setState({
+        todos: [],
+        isLoading: false,
+        error: null,
+      });
     });
   });
 
@@ -31,10 +34,12 @@ describe("TodoStore Integration Tests", () => {
   test("should add todo and update store state", async () => {
     const { addTodo } = useTodoStore.getState();
 
-    await addTodo({
-      title: "Test Todo",
-      description: "Test Description",
-      priority: 2,
+    await act(async () => {
+      await addTodo({
+        title: "Test Todo",
+        description: "Test Description",
+        priority: 2,
+      });
     });
 
     const state = useTodoStore.getState();
@@ -53,11 +58,15 @@ describe("TodoStore Integration Tests", () => {
     const { addTodo, toggleTodo } = useTodoStore.getState();
 
     // Add a todo first
-    await addTodo({ title: "Test Todo" });
+    await act(async () => {
+      await addTodo({ title: "Test Todo" });
+    });
     const todoId = useTodoStore.getState().todos[0].id;
 
     // Toggle it
-    await toggleTodo(todoId);
+    await act(async () => {
+      await toggleTodo(todoId);
+    });
 
     const state = useTodoStore.getState();
     expect(state.todos[0].completed).toBe(true);
@@ -67,14 +76,18 @@ describe("TodoStore Integration Tests", () => {
     const { addTodo, updateTodo } = useTodoStore.getState();
 
     // Add a todo first
-    await addTodo({ title: "Original Title", priority: 1 });
+    await act(async () => {
+      await addTodo({ title: "Original Title", priority: 1 });
+    });
     const todoId = useTodoStore.getState().todos[0].id;
 
     // Update it
-    await updateTodo({
-      id: todoId,
-      title: "Updated Title",
-      priority: 3,
+    await act(async () => {
+      await updateTodo({
+        id: todoId,
+        title: "Updated Title",
+        priority: 3,
+      });
     });
 
     const state = useTodoStore.getState();
@@ -88,11 +101,15 @@ describe("TodoStore Integration Tests", () => {
     const { addTodo, deleteTodo } = useTodoStore.getState();
 
     // Add a todo first
-    await addTodo({ title: "Test Todo" });
+    await act(async () => {
+      await addTodo({ title: "Test Todo" });
+    });
     const todoId = useTodoStore.getState().todos[0].id;
 
     // Delete it
-    await deleteTodo(todoId);
+    await act(async () => {
+      await deleteTodo(todoId);
+    });
 
     const state = useTodoStore.getState();
     expect(state.todos).toHaveLength(0);
@@ -106,7 +123,9 @@ describe("TodoStore Integration Tests", () => {
     await TodoService.createTodo({ title: "Todo 2" });
 
     // Load todos into store
-    await loadTodos();
+    await act(async () => {
+      await loadTodos();
+    });
 
     const state = useTodoStore.getState();
     expect(state.todos).toHaveLength(2);
@@ -119,11 +138,17 @@ describe("TodoStore Integration Tests", () => {
     const { addTodo, clearAllTodos } = useTodoStore.getState();
 
     // Add some todos
-    await addTodo({ title: "Todo 1" });
-    await addTodo({ title: "Todo 2" });
+    await act(async () => {
+      await addTodo({ title: "Todo 1" });
+    });
+    await act(async () => {
+      await addTodo({ title: "Todo 2" });
+    });
 
     // Clear all
-    await clearAllTodos();
+    await act(async () => {
+      await clearAllTodos();
+    });
 
     const state = useTodoStore.getState();
     expect(state.todos).toHaveLength(0);
@@ -132,7 +157,9 @@ describe("TodoStore Integration Tests", () => {
   test("should get todo by id", async () => {
     const { addTodo, getTodoById } = useTodoStore.getState();
 
-    await addTodo({ title: "Test Todo" });
+    await act(async () => {
+      await addTodo({ title: "Test Todo" });
+    });
     const todoId = useTodoStore.getState().todos[0].id;
 
     const todo = getTodoById(todoId);
@@ -146,13 +173,21 @@ describe("TodoStore Integration Tests", () => {
     const { addTodo, toggleTodo, getIncompleteTodos } = useTodoStore.getState();
 
     // Add todos
-    await addTodo({ title: "Todo 1" });
-    await addTodo({ title: "Todo 2" });
-    await addTodo({ title: "Todo 3" });
+    await act(async () => {
+      await addTodo({ title: "Todo 1" });
+    });
+    await act(async () => {
+      await addTodo({ title: "Todo 2" });
+    });
+    await act(async () => {
+      await addTodo({ title: "Todo 3" });
+    });
 
     // Complete one
     const todoId = useTodoStore.getState().todos[1].id;
-    await toggleTodo(todoId);
+    await act(async () => {
+      await toggleTodo(todoId);
+    });
 
     const incomplete = getIncompleteTodos();
     expect(incomplete).toHaveLength(2);
@@ -163,12 +198,18 @@ describe("TodoStore Integration Tests", () => {
     const { addTodo, toggleTodo, getCompletedTodos } = useTodoStore.getState();
 
     // Add todos
-    await addTodo({ title: "Todo 1" });
-    await addTodo({ title: "Todo 2" });
+    await act(async () => {
+      await addTodo({ title: "Todo 1" });
+    });
+    await act(async () => {
+      await addTodo({ title: "Todo 2" });
+    });
 
     // Complete one
     const todoId = useTodoStore.getState().todos[0].id;
-    await toggleTodo(todoId);
+    await act(async () => {
+      await toggleTodo(todoId);
+    });
 
     const completed = getCompletedTodos();
     expect(completed).toHaveLength(1);
@@ -178,9 +219,15 @@ describe("TodoStore Integration Tests", () => {
   test("should filter todos by priority", async () => {
     const { addTodo, getTodosByPriority } = useTodoStore.getState();
 
-    await addTodo({ title: "Low Priority", priority: 1 });
-    await addTodo({ title: "High Priority", priority: 3 });
-    await addTodo({ title: "Another High", priority: 3 });
+    await act(async () => {
+      await addTodo({ title: "Low Priority", priority: 1 });
+    });
+    await act(async () => {
+      await addTodo({ title: "High Priority", priority: 3 });
+    });
+    await act(async () => {
+      await addTodo({ title: "Another High", priority: 3 });
+    });
 
     const highPriority = getTodosByPriority(3);
     expect(highPriority).toHaveLength(2);
@@ -191,11 +238,13 @@ describe("TodoStore Integration Tests", () => {
     const { addTodo } = useTodoStore.getState();
 
     // Start the async operation
-    const promise = addTodo({ title: "Test Todo" });
+    await act(async () => {
+      const promise = addTodo({ title: "Test Todo" });
 
-    // Check loading state (this might be tricky to test due to timing)
-    // For now, just ensure the operation completes
-    await promise;
+      // Check loading state (this might be tricky to test due to timing)
+      // For now, just ensure the operation completes
+      await promise;
+    });
 
     const state = useTodoStore.getState();
     expect(state.isLoading).toBe(false);
@@ -211,7 +260,9 @@ describe("TodoStore Integration Tests", () => {
 
     const { addTodo } = useTodoStore.getState();
 
-    await addTodo({ title: "Test Todo" });
+    await act(async () => {
+      await addTodo({ title: "Test Todo" });
+    });
 
     const state = useTodoStore.getState();
     expect(state.error).toContain("Failed to add todo");
