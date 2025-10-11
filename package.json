@@ -21,6 +21,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@sqlite.org/sqlite-wasm": "^3.50.4-build1",
     "@tamagui/animations-react-native": "^1.135.2",
     "@tamagui/button": "^1.135.2",
     "@tamagui/card": "^1.135.2",
