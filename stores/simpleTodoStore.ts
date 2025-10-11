@@ -15,6 +15,7 @@ const saveToStorage = (todos: Todo[]) => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
     }
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.warn("Failed to save todos to localStorage:", error);
   }
 };
@@ -28,6 +29,7 @@ const loadFromStorage = (): Todo[] => {
       }
     }
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.warn("Failed to load todos from localStorage:", error);
   }
   return [];

@@ -15,7 +15,7 @@ export default function TodoList() {
   const [selectedPriority, setSelectedPriority] = useState<Priority>(1);
 
   // Zustand hooks - much cleaner than database calls!
-  const { todos, addTodo, updateTodo, deleteTodo, toggleTodo, loadTodos } =
+  const { todos, addTodo, deleteTodo, toggleTodo, loadTodos } =
     useTodoStore();
   const { total, completed, pending } = useTodoStats();
 

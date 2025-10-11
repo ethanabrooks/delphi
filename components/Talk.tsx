@@ -26,7 +26,6 @@ export default function Talk({
     if (Platform.OS === "web") {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setIsSupported(false);
-        // Web Audio API not supported
       }
     }
   };
@@ -87,7 +86,6 @@ export default function Talk({
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
     } catch {
-      // Failed to start recording
       setIsRecording(false);
       Alert.alert(
         "Recording Error",
@@ -114,8 +112,6 @@ export default function Talk({
       const reader = new FileReader();
       reader.onload = async () => {
         try {
-          // Convert audio blob to FormData for API upload
-
           // Use OpenAI Speech-to-Text API
           const formData = new FormData();
           formData.append("file", audioBlob, "audio.wav");
@@ -196,14 +192,12 @@ export default function Talk({
             speechSynthesis.speak(utterance);
           }
         } catch {
-          // Failed to process voice input
           setResponse("Sorry, I encountered an error processing your request.");
         }
       };
 
       reader.readAsDataURL(audioBlob);
     } catch {
-      // Failed to process voice input
       setResponse("Sorry, I could not process your voice input.");
     }
   };

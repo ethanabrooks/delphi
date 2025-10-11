@@ -48,5 +48,6 @@
       "eslint --fix"
     ]
   },
+  "type": "module",
   "private": true
 }
