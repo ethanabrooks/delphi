@@ -31,13 +31,13 @@ export interface UpdateTodoInput {
 }
 
 export const PRIORITY_LABELS = {
-  1: 'Low',
-  2: 'Medium',
-  3: 'High'
+  1: "Low",
+  2: "Medium",
+  3: "High",
 } as const;
 
 export const PRIORITY_COLORS = {
-  1: 'bg-green-100 text-green-800',
-  2: 'bg-yellow-100 text-yellow-800',
-  3: 'bg-red-100 text-red-800'
+  1: "bg-green-100 text-green-800",
+  2: "bg-yellow-100 text-yellow-800",
+  3: "bg-red-100 text-red-800",
 } as const;

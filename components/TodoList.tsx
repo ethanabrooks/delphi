@@ -1,24 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
-import { Priority, PRIORITY_LABELS, PRIORITY_COLORS } from '../types/todo';
-import { useTodoStore, useTodoStats } from '../stores/simpleTodoStore';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+} from "react-native";
+import { Priority, PRIORITY_LABELS, PRIORITY_COLORS } from "../types/todo";
+import { useTodoStore, useTodoStats } from "../stores/simpleTodoStore";
 
 export default function TodoList() {
-  const [newTodo, setNewTodo] = useState('');
+  const [newTodo, setNewTodo] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<Priority>(1);
 
   // Zustand hooks - much cleaner than database calls!
-  const { todos, addTodo, updateTodo, deleteTodo, toggleTodo, loadTodos } = useTodoStore();
+  const { todos, addTodo, updateTodo, deleteTodo, toggleTodo, loadTodos } =
+    useTodoStore();
   const { total, completed, pending } = useTodoStats();
 
   // Load todos from localStorage on mount
   useEffect(() => {
     loadTodos();
-  }, [loadTodos]);
+  }, []);
 
   const handleAddTodo = () => {
     if (!newTodo.trim()) {
-      Alert.alert('Error', 'Please enter a todo item');
+      Alert.alert("Error", "Please enter a todo item");
       return;
     }
 
@@ -27,7 +35,7 @@ export default function TodoList() {
       priority: selectedPriority,
     });
 
-    setNewTodo('');
+    setNewTodo("");
     setSelectedPriority(1);
   };
 
@@ -36,18 +44,14 @@ export default function TodoList() {
   };
 
   const handleDeleteTodo = (todoId: number, title: string) => {
-    Alert.alert(
-      'Delete Todo',
-      `Are you sure you want to delete "${title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteTodo(todoId),
-        },
-      ]
-    );
+    Alert.alert("Delete Todo", `Are you sure you want to delete "${title}"?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => deleteTodo(todoId),
+      },
+    ]);
   };
 
   const formatDate = (dateString: string) => {
@@ -81,10 +85,12 @@ export default function TodoList() {
               className={`px-3 py-1 rounded-full mr-2 ${
                 selectedPriority === priority
                   ? PRIORITY_COLORS[priority]
-                  : 'bg-gray-200 text-gray-600'
+                  : "bg-gray-200 text-gray-600"
               }`}
             >
-              <Text className={selectedPriority === priority ? '' : 'text-gray-600'}>
+              <Text
+                className={selectedPriority === priority ? "" : "text-gray-600"}
+              >
                 {PRIORITY_LABELS[priority]}
               </Text>
             </TouchableOpacity>
@@ -112,7 +118,7 @@ export default function TodoList() {
             <View
               key={todo.id}
               className={`bg-white p-4 rounded-lg shadow-sm mb-3 ${
-                todo.completed ? 'opacity-60' : ''
+                todo.completed ? "opacity-60" : ""
               }`}
             >
               <View className="flex-row justify-between items-start">
@@ -121,8 +127,8 @@ export default function TodoList() {
                     <Text
                       className={`text-lg font-medium ${
                         todo.completed
-                          ? 'line-through text-gray-500'
-                          : 'text-gray-800'
+                          ? "line-through text-gray-500"
+                          : "text-gray-800"
                       }`}
                     >
                       {todo.title}
@@ -130,11 +136,15 @@ export default function TodoList() {
                   </TouchableOpacity>
 
                   {todo.description && (
-                    <Text className="text-gray-600 mt-1">{todo.description}</Text>
+                    <Text className="text-gray-600 mt-1">
+                      {todo.description}
+                    </Text>
                   )}
 
                   <View className="flex-row items-center mt-2">
-                    <View className={`px-2 py-1 rounded-full mr-2 ${PRIORITY_COLORS[todo.priority]}`}>
+                    <View
+                      className={`px-2 py-1 rounded-full mr-2 ${PRIORITY_COLORS[todo.priority]}`}
+                    >
                       <Text className="text-xs font-medium">
                         {PRIORITY_LABELS[todo.priority]}
                       </Text>
@@ -142,7 +152,9 @@ export default function TodoList() {
 
                     {todo.category && (
                       <View className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full mr-2">
-                        <Text className="text-xs text-blue-800">{todo.category}</Text>
+                        <Text className="text-xs text-blue-800">
+                          {todo.category}
+                        </Text>
                       </View>
                     )}
 
@@ -156,15 +168,15 @@ export default function TodoList() {
                   <TouchableOpacity
                     onPress={() => handleToggleTodo(todo.id)}
                     className={`px-3 py-2 rounded-lg mr-2 ${
-                      todo.completed
-                        ? 'bg-yellow-100'
-                        : 'bg-green-100'
+                      todo.completed ? "bg-yellow-100" : "bg-green-100"
                     }`}
                   >
-                    <Text className={`text-sm font-medium ${
-                      todo.completed ? 'text-yellow-800' : 'text-green-800'
-                    }`}>
-                      {todo.completed ? 'Undo' : 'Done'}
+                    <Text
+                      className={`text-sm font-medium ${
+                        todo.completed ? "text-yellow-800" : "text-green-800"
+                      }`}
+                    >
+                      {todo.completed ? "Undo" : "Done"}
                     </Text>
                   </TouchableOpacity>
 
@@ -172,7 +184,9 @@ export default function TodoList() {
                     onPress={() => handleDeleteTodo(todo.id, todo.title)}
                     className="bg-red-100 px-3 py-2 rounded-lg"
                   >
-                    <Text className="text-red-800 text-sm font-medium">Delete</Text>
+                    <Text className="text-red-800 text-sm font-medium">
+                      Delete
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>

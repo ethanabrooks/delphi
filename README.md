@@ -45,12 +45,14 @@ npm run android
 ## Voice Agent Modes
 
 ### Basic Voice Agent
+
 - Records audio using device microphone
 - Transcribes speech using OpenAI Whisper API
 - Generates responses using GPT-4o
 - Converts responses to speech using device TTS
 
 ### Realtime Voice Agent
+
 - Uses OpenAI's Realtime API via WebSocket
 - Streaming audio input/output
 - Lower latency conversations
@@ -67,11 +69,13 @@ npm run android
 ## API Requirements
 
 ### Basic Voice Agent
+
 - OpenAI Whisper API (speech-to-text)
 - OpenAI Chat Completions API (GPT-4o)
 - Device text-to-speech capabilities
 
 ### Realtime Voice Agent
+
 - OpenAI Realtime API access
 - WebSocket connection support
 - Real-time audio streaming
@@ -113,15 +117,18 @@ The app works in demo mode without an API key - it will simulate voice interacti
 ## Troubleshooting
 
 ### Permission Issues
+
 - Ensure microphone permissions are granted
 - Check device audio settings
 
 ### API Issues
+
 - Verify your OpenAI API key is valid
 - Check you have sufficient API credits
 - Ensure network connectivity
 
 ### Audio Issues
+
 - Test with device speakers/headphones
 - Check volume levels
 - Verify audio codec support

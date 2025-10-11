@@ -1,4 +1,4 @@
-const { hairlineWidth } = require('nativewind/theme')
+const { hairlineWidth } = require("nativewind/theme");
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -10,7 +10,7 @@ module.exports = {
     "./stores/**/*.{js,jsx,ts,tsx}",
     "./types/**/*.{js,jsx,ts,tsx}",
     "./services/**/*.{js,jsx,ts,tsx}",
-    "./app/**/*.{js,jsx,ts,tsx}"
+    "./app/**/*.{js,jsx,ts,tsx}",
   ],
   presets: [require("nativewind/preset")],
   theme: {
@@ -21,5 +21,4 @@ module.exports = {
     },
   },
   plugins: [],
-}
-
+};

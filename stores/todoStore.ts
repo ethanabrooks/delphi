@@ -1,6 +1,11 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Todo, CreateTodoInput, UpdateTodoInput, Priority } from '../types/todo';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import {
+  Todo,
+  CreateTodoInput,
+  UpdateTodoInput,
+  Priority,
+} from "../types/todo";
 
 interface TodoStore {
   todos: Todo[];
@@ -55,7 +60,7 @@ export const useTodoStore = create<TodoStore>()(
                   ...input,
                   updated_at: new Date().toISOString(),
                 }
-              : todo
+              : todo,
           ),
         }));
       },
@@ -75,7 +80,7 @@ export const useTodoStore = create<TodoStore>()(
                   completed: !todo.completed,
                   updated_at: new Date().toISOString(),
                 }
-              : todo
+              : todo,
           ),
         }));
       },
@@ -103,19 +108,21 @@ export const useTodoStore = create<TodoStore>()(
       },
     }),
     {
-      name: 'voice-agent-todos', // localStorage key
+      name: "voice-agent-todos", // localStorage key
       version: 1, // For migrations if needed later
-    }
-  )
+    },
+  ),
 );
 
 // Helper hook for common computed values
 export const useTodoStats = () => {
   return useTodoStore((state) => {
     const total = state.todos.length;
-    const completed = state.todos.filter(t => t.completed).length;
+    const completed = state.todos.filter((t) => t.completed).length;
     const pending = total - completed;
-    const highPriority = state.todos.filter(t => t.priority === 3 && !t.completed).length;
+    const highPriority = state.todos.filter(
+      (t) => t.priority === 3 && !t.completed,
+    ).length;
 
     return {
       total,
@@ -132,8 +139,8 @@ export const todoVoiceHelpers = {
     const { todos } = useTodoStore.getState();
     const lowerPartial = partialTitle.toLowerCase();
 
-    return todos.find(todo =>
-      todo.title.toLowerCase().includes(lowerPartial)
+    return todos.find((todo) =>
+      todo.title.toLowerCase().includes(lowerPartial),
     );
   },
 
@@ -173,8 +180,8 @@ export const todoVoiceHelpers = {
 
   getTodoSummary: (): string => {
     const { todos } = useTodoStore.getState();
-    const completed = todos.filter(t => t.completed).length;
-    const pending = todos.filter(t => !t.completed).length;
+    const completed = todos.filter((t) => t.completed).length;
+    const pending = todos.filter((t) => !t.completed).length;
 
     if (todos.length === 0) {
       return "Your todo list is empty.";
@@ -186,10 +193,11 @@ export const todoVoiceHelpers = {
     }
 
     if (pending > 0) {
-      const recentPending = todos.filter(t => !t.completed).slice(0, 3);
-      summary += '. Recent items: ' + recentPending.map(t => t.title).join(', ');
+      const recentPending = todos.filter((t) => !t.completed).slice(0, 3);
+      summary +=
+        ". Recent items: " + recentPending.map((t) => t.title).join(", ");
     }
 
-    return summary + '.';
+    return summary + ".";
   },
 };

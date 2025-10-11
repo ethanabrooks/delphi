@@ -1,29 +1,34 @@
-import { create } from 'zustand';
-import { Todo, CreateTodoInput, UpdateTodoInput, Priority } from '../types/todo';
+import { create } from "zustand";
+import {
+  Todo,
+  CreateTodoInput,
+  UpdateTodoInput,
+  Priority,
+} from "../types/todo";
 
 // Simple localStorage persistence without the persist middleware
-const STORAGE_KEY = 'voice-agent-todos';
+const STORAGE_KEY = "voice-agent-todos";
 
 const saveToStorage = (todos: Todo[]) => {
   try {
-    if (typeof window !== 'undefined' && window.localStorage) {
+    if (typeof window !== "undefined" && window.localStorage) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
     }
   } catch (error) {
-    console.warn('Failed to save todos to localStorage:', error);
+    console.warn("Failed to save todos to localStorage:", error);
   }
 };
 
 const loadFromStorage = (): Todo[] => {
   try {
-    if (typeof window !== 'undefined' && window.localStorage) {
+    if (typeof window !== "undefined" && window.localStorage) {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         return JSON.parse(stored);
       }
     }
   } catch (error) {
-    console.warn('Failed to load todos from localStorage:', error);
+    console.warn("Failed to load todos from localStorage:", error);
   }
   return [];
 };
@@ -82,7 +87,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
               ...input,
               updated_at: new Date().toISOString(),
             }
-          : todo
+          : todo,
       );
       saveToStorage(newTodos);
       return { todos: newTodos };
@@ -106,7 +111,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
               completed: !todo.completed,
               updated_at: new Date().toISOString(),
             }
-          : todo
+          : todo,
       );
       saveToStorage(newTodos);
       return { todos: newTodos };
@@ -137,26 +142,68 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   },
 
   loadTodos: () => {
-    const todos = loadFromStorage();
-    set({ todos });
+    const currentTodos = get().todos;
+    const storedTodos = loadFromStorage();
+
+    // Only update if todos actually changed
+    if (JSON.stringify(currentTodos) !== JSON.stringify(storedTodos)) {
+      set({ todos: storedTodos });
+    }
   },
 }));
 
+// Memoized selector for todo stats to prevent infinite loops
+let lastTodos: Todo[] | undefined;
+let lastStats:
+  | { total: number; completed: number; pending: number; highPriority: number }
+  | undefined;
+
+const selectTodoStats = (state: { todos: Todo[] }) => {
+  // Only recalculate if todos array changed
+  if (state.todos === lastTodos && lastStats) {
+    return lastStats;
+  }
+
+  // Check if todos content actually changed (not just reference)
+  const todosChanged =
+    !lastTodos ||
+    lastTodos.length !== state.todos.length ||
+    lastTodos.some(
+      (todo, i) =>
+        state.todos[i]?.id !== todo.id ||
+        state.todos[i]?.completed !== todo.completed ||
+        state.todos[i]?.priority !== todo.priority,
+    );
+
+  if (!todosChanged && lastStats) {
+    lastTodos = state.todos; // Update reference but keep stats
+    return lastStats;
+  }
+
+  // Recalculate stats
+  const total = state.todos.length;
+  const completed = state.todos.filter((t) => t.completed).length;
+  const pending = total - completed;
+  const highPriority = state.todos.filter(
+    (t) => t.priority === 3 && !t.completed,
+  ).length;
+
+  const stats = {
+    total,
+    completed,
+    pending,
+    highPriority,
+  };
+
+  lastTodos = state.todos;
+  lastStats = stats;
+
+  return stats;
+};
+
 // Helper hook for common computed values
 export const useTodoStats = () => {
-  return useTodoStore((state) => {
-    const total = state.todos.length;
-    const completed = state.todos.filter(t => t.completed).length;
-    const pending = total - completed;
-    const highPriority = state.todos.filter(t => t.priority === 3 && !t.completed).length;
-
-    return {
-      total,
-      completed,
-      pending,
-      highPriority,
-    };
-  });
+  return useTodoStore(selectTodoStats);
 };
 
 // Helper functions for voice commands
@@ -165,8 +212,8 @@ export const todoVoiceHelpers = {
     const { todos } = useTodoStore.getState();
     const lowerPartial = partialTitle.toLowerCase();
 
-    return todos.find(todo =>
-      todo.title.toLowerCase().includes(lowerPartial)
+    return todos.find((todo) =>
+      todo.title.toLowerCase().includes(lowerPartial),
     );
   },
 
@@ -206,8 +253,8 @@ export const todoVoiceHelpers = {
 
   getTodoSummary: (): string => {
     const { todos } = useTodoStore.getState();
-    const completed = todos.filter(t => t.completed).length;
-    const pending = todos.filter(t => !t.completed).length;
+    const completed = todos.filter((t) => t.completed).length;
+    const pending = todos.filter((t) => !t.completed).length;
 
     if (todos.length === 0) {
       return "Your todo list is empty.";
@@ -219,10 +266,11 @@ export const todoVoiceHelpers = {
     }
 
     if (pending > 0) {
-      const recentPending = todos.filter(t => !t.completed).slice(0, 3);
-      summary += '. Recent items: ' + recentPending.map(t => t.title).join(', ');
+      const recentPending = todos.filter((t) => !t.completed).slice(0, 3);
+      summary +=
+        ". Recent items: " + recentPending.map((t) => t.title).join(", ");
     }
 
-    return summary + '.';
+    return summary + ".";
   },
 };

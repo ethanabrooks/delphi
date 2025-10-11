@@ -1,25 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
+import React, { useState, useRef, useEffect } from "react";
+import { View, Text, TouchableOpacity, Alert, Platform } from "react-native";
+import { Audio } from "expo-av";
 
-// Dynamic import for expo-av to handle web compatibility
-let Audio: any = null;
-if (Platform.OS !== 'web') {
-  try {
-    Audio = require('expo-av').Audio;
-  } catch (error) {
-    console.warn('expo-av not available:', error);
-  }
-}
+// For web compatibility, we'll handle Audio conditionally in the component
 
 interface RealtimeVoiceAgentProps {
   apiKey?: string;
 }
 
-export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) {
+export default function RealtimeVoiceAgent({
+  apiKey,
+}: RealtimeVoiceAgentProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [status, setStatus] = useState('Disconnected');
+  const [status, setStatus] = useState("Disconnected");
 
   const wsRef = useRef<WebSocket | null>(null);
   const recordingRef = useRef<Audio.Recording | null>(null);
@@ -36,31 +31,36 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
 
   const connectToRealtime = () => {
     if (!apiKey) {
-      setStatus('No API key provided');
+      setStatus("No API key provided");
       return;
     }
 
     try {
-      const ws = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01');
+      const ws = new WebSocket(
+        "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01",
+      );
 
       ws.onopen = () => {
         setIsConnected(true);
-        setStatus('Connected');
+        setStatus("Connected");
 
         // Send session configuration
-        ws.send(JSON.stringify({
-          type: 'session.update',
-          session: {
-            modalities: ['text', 'audio'],
-            instructions: 'You are a helpful voice assistant. Keep responses conversational and engaging.',
-            voice: 'alloy',
-            input_audio_format: 'pcm16',
-            output_audio_format: 'pcm16',
-            input_audio_transcription: {
-              model: 'whisper-1'
-            }
-          }
-        }));
+        ws.send(
+          JSON.stringify({
+            type: "session.update",
+            session: {
+              modalities: ["text", "audio"],
+              instructions:
+                "You are a helpful voice assistant. Keep responses conversational and engaging.",
+              voice: "alloy",
+              input_audio_format: "pcm16",
+              output_audio_format: "pcm16",
+              input_audio_transcription: {
+                model: "whisper-1",
+              },
+            },
+          }),
+        );
       };
 
       ws.onmessage = (event) => {
@@ -70,18 +70,18 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
 
       ws.onclose = () => {
         setIsConnected(false);
-        setStatus('Disconnected');
+        setStatus("Disconnected");
       };
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setStatus('Connection error');
+        console.error("WebSocket error:", error);
+        setStatus("Connection error");
       };
 
       wsRef.current = ws;
     } catch (error) {
-      console.error('Failed to connect to Realtime API:', error);
-      setStatus('Connection failed');
+      console.error("Failed to connect to Realtime API:", error);
+      setStatus("Connection failed");
     }
   };
 
@@ -101,36 +101,36 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
 
   const handleRealtimeMessage = (message: any) => {
     switch (message.type) {
-      case 'session.created':
-        setStatus('Session ready');
+      case "session.created":
+        setStatus("Session ready");
         break;
 
-      case 'input_audio_buffer.speech_started':
-        setStatus('Listening...');
+      case "input_audio_buffer.speech_started":
+        setStatus("Listening...");
         break;
 
-      case 'input_audio_buffer.speech_stopped':
-        setStatus('Processing...');
+      case "input_audio_buffer.speech_stopped":
+        setStatus("Processing...");
         break;
 
-      case 'conversation.item.input_audio_transcription.completed':
+      case "conversation.item.input_audio_transcription.completed":
         setStatus(`You said: "${message.transcript}"`);
         break;
 
-      case 'response.audio.delta':
+      case "response.audio.delta":
         // Handle streaming audio response
         if (message.delta) {
           playAudioChunk(message.delta);
         }
         break;
 
-      case 'response.done':
-        setStatus('Response complete');
+      case "response.done":
+        setStatus("Response complete");
         setIsPlaying(false);
         break;
 
-      case 'error':
-        console.error('Realtime API error:', message.error);
+      case "error":
+        console.error("Realtime API error:", message.error);
         setStatus(`Error: ${message.error.message}`);
         break;
     }
@@ -139,7 +139,8 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
   const playAudioChunk = async (base64Audio: string) => {
     try {
       if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = new (window.AudioContext ||
+          (window as any).webkitAudioContext)();
       }
 
       const audioContext = audioContextRef.current;
@@ -159,21 +160,24 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
 
       setIsPlaying(true);
     } catch (error) {
-      console.error('Failed to play audio chunk:', error);
+      console.error("Failed to play audio chunk:", error);
     }
   };
 
   const startVoiceSession = async () => {
     if (!isConnected || !wsRef.current) {
-      Alert.alert('Not Connected', 'Please wait for connection to be established');
+      Alert.alert(
+        "Not Connected",
+        "Please wait for connection to be established",
+      );
       return;
     }
 
     try {
       // Request microphone permission
       const permission = await Audio.requestPermissionsAsync();
-      if (permission.status !== 'granted') {
-        Alert.alert('Permission required', 'Microphone access is required');
+      if (permission.status !== "granted") {
+        Alert.alert("Permission required", "Microphone access is required");
         return;
       }
 
@@ -186,7 +190,7 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
       const recording = new Audio.Recording();
       await recording.prepareToRecordAsync({
         android: {
-          extension: '.wav',
+          extension: ".wav",
           outputFormat: Audio.AndroidOutputFormat.DEFAULT,
           audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
           sampleRate: 24000,
@@ -194,7 +198,7 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
           bitRate: 128000,
         },
         ios: {
-          extension: '.wav',
+          extension: ".wav",
           audioQuality: Audio.IOSAudioQuality.HIGH,
           sampleRate: 24000,
           numberOfChannels: 1,
@@ -204,7 +208,7 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
           linearPCMIsFloat: false,
         },
         web: {
-          mimeType: 'audio/wav',
+          mimeType: "audio/wav",
           bitsPerSecond: 128000,
         },
       });
@@ -212,14 +216,13 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
       await recording.startAsync();
       recordingRef.current = recording;
       setIsRecording(true);
-      setStatus('Recording... (tap to stop)');
+      setStatus("Recording... (tap to stop)");
 
       // Start sending audio data in real-time (simplified for demo)
       // In a production app, you'd want to stream audio chunks continuously
-
     } catch (error) {
-      console.error('Failed to start voice session:', error);
-      Alert.alert('Error', 'Failed to start recording');
+      console.error("Failed to start voice session:", error);
+      Alert.alert("Error", "Failed to start recording");
     }
   };
 
@@ -234,28 +237,36 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
           // Convert audio to base64 and send to Realtime API
           const response = await fetch(uri);
           const arrayBuffer = await response.arrayBuffer();
-          const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          const base64Audio = btoa(
+            String.fromCharCode(...new Uint8Array(arrayBuffer)),
+          );
 
-          wsRef.current.send(JSON.stringify({
-            type: 'input_audio_buffer.append',
-            audio: base64Audio
-          }));
+          wsRef.current.send(
+            JSON.stringify({
+              type: "input_audio_buffer.append",
+              audio: base64Audio,
+            }),
+          );
 
-          wsRef.current.send(JSON.stringify({
-            type: 'input_audio_buffer.commit'
-          }));
+          wsRef.current.send(
+            JSON.stringify({
+              type: "input_audio_buffer.commit",
+            }),
+          );
 
-          wsRef.current.send(JSON.stringify({
-            type: 'response.create',
-            response: {
-              modalities: ['text', 'audio'],
-              instructions: 'Please respond naturally to what the user said.'
-            }
-          }));
+          wsRef.current.send(
+            JSON.stringify({
+              type: "response.create",
+              response: {
+                modalities: ["text", "audio"],
+                instructions: "Please respond naturally to what the user said.",
+              },
+            }),
+          );
         }
       }
     } catch (error) {
-      console.error('Failed to stop recording:', error);
+      console.error("Failed to stop recording:", error);
     } finally {
       setIsRecording(false);
     }
@@ -271,7 +282,9 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
 
   return (
     <View className="flex-1 justify-center items-center p-6">
-      <Text className="text-3xl font-bold text-gray-800 mb-6">Realtime Voice Agent</Text>
+      <Text className="text-3xl font-bold text-gray-800 mb-6">
+        Realtime Voice Agent
+      </Text>
 
       <View className="bg-white p-4 rounded-lg mb-6 min-w-xs">
         <Text className="text-sm text-gray-600 mb-1">Status:</Text>
@@ -283,23 +296,22 @@ export default function RealtimeVoiceAgent({ apiKey }: RealtimeVoiceAgentProps) 
         disabled={!isConnected || isPlaying}
         className={`w-32 h-32 rounded-full items-center justify-center ${
           !isConnected
-            ? 'bg-gray-400'
+            ? "bg-gray-400"
             : isRecording
-              ? 'bg-red-500'
+              ? "bg-red-500"
               : isPlaying
-                ? 'bg-green-500'
-                : 'bg-blue-500'
+                ? "bg-green-500"
+                : "bg-blue-500"
         }`}
       >
         <Text className="text-white text-lg font-semibold text-center">
           {!isConnected
-            ? 'Connecting...'
+            ? "Connecting..."
             : isRecording
-              ? 'Stop'
+              ? "Stop"
               : isPlaying
-                ? 'Playing'
-                : 'Talk'
-          }
+                ? "Playing"
+                : "Talk"}
         </Text>
       </TouchableOpacity>
 
