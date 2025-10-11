@@ -3,18 +3,49 @@ import { z } from "zod";
 const OPENAI_BASE_URL = "https://api.openai.com";
 
 export type ChatCompletionMessage = {
-  role: "system" | "user" | "assistant";
-  content: string;
+  role: "system" | "user" | "assistant" | "tool";
+  content: string | null;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+  name?: string;
+};
+
+export type ToolCall = {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+};
+
+export type Tool = {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: "object";
+      properties: Record<string, unknown>;
+      required?: string[];
+    };
+  };
 };
 
 export interface ChatCompletionParams {
   model: string;
   messages: ChatCompletionMessage[];
   maxTokens?: number;
+  tools?: Tool[];
+  tool_choice?:
+    | "auto"
+    | "none"
+    | { type: "function"; function: { name: string } };
 }
 
 export interface ChatCompletionResult {
-  content: string;
+  content: string | null;
+  tool_calls?: ToolCall[];
 }
 
 export interface TranscriptionResult {
@@ -36,12 +67,22 @@ const transcriptionSchema = z.object({
   text: z.string(),
 });
 
+const toolCallSchema = z.object({
+  id: z.string(),
+  type: z.literal("function"),
+  function: z.object({
+    name: z.string(),
+    arguments: z.string(),
+  }),
+});
+
 const chatCompletionSchema = z.object({
   choices: z
     .array(
       z.object({
         message: z.object({
-          content: z.string(),
+          content: z.string().nullable(),
+          tool_calls: z.array(toolCallSchema).optional(),
         }),
       })
     )
@@ -75,11 +116,11 @@ function parseChatCompletion(json: unknown): ChatCompletionResult {
 
   const [
     {
-      message: { content },
+      message: { content, tool_calls },
     },
   ] = result.data.choices;
 
-  return { content };
+  return { content, tool_calls };
 }
 
 function buildHeaders(apiKey: string, extra?: HeadersInit): HeadersInit {
@@ -113,17 +154,37 @@ export class OpenAIClient {
     model,
     messages,
     maxTokens,
+    tools,
+    tool_choice,
   }: ChatCompletionParams): Promise<ChatCompletionResult> {
+    const requestBody: {
+      model: string;
+      messages: ChatCompletionMessage[];
+      max_tokens?: number;
+      tools?: Tool[];
+      tool_choice?:
+        | "auto"
+        | "none"
+        | { type: "function"; function: { name: string } };
+    } = {
+      model,
+      messages,
+      max_tokens: maxTokens,
+    };
+
+    if (tools && tools.length > 0) {
+      requestBody.tools = tools;
+      if (tool_choice) {
+        requestBody.tool_choice = tool_choice;
+      }
+    }
+
     const response = await fetch(`${OPENAI_BASE_URL}/v1/chat/completions`, {
       method: "POST",
       headers: buildHeaders(this.apiKey, {
         "Content-Type": "application/json",
       }),
-      body: JSON.stringify({
-        model,
-        messages,
-        max_tokens: maxTokens,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     const payload = await this.parseJson(response);

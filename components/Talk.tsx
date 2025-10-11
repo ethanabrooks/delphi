@@ -1,7 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { Button, Text, YStack } from "tamagui";
-import useTalkController from "../hooks/useTalkController";
+import { ConversationAgent } from "../services/conversationAgent";
+import OpenAIClient from "../services/openaiClient";
+import voiceService, { type VoiceRecording } from "../services/voiceService";
 
 interface TalkProps {
   apiKey?: string;
@@ -9,26 +11,143 @@ interface TalkProps {
 }
 
 export default function Talk({ apiKey, customProcessor }: TalkProps) {
-  const {
-    isSupported,
-    isRecording,
-    isProcessing,
-    transcript,
-    response,
-    handlePress,
-    errorMessage,
-    clearError,
-  } = useTalkController({ apiKey, customProcessor });
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [response, setResponse] = useState("");
+  const [isSupported, setIsSupported] = useState(() =>
+    voiceService.isSupported()
+  );
+
+  const openAiClient = useMemo(() => {
+    if (!apiKey) {
+      return null;
+    }
+
+    try {
+      return new OpenAIClient(apiKey);
+    } catch {
+      return null;
+    }
+  }, [apiKey]);
+
+  const conversationAgent = useMemo(() => {
+    return new ConversationAgent(apiKey);
+  }, [apiKey]);
 
   useEffect(() => {
-    if (!errorMessage) {
+    setIsSupported(voiceService.isSupported());
+
+    return () => {
+      void voiceService.cancelRecording();
+    };
+  }, []);
+
+  const startRecording = async () => {
+    try {
+      setTranscript("");
+      setResponse("");
+      await voiceService.startRecording();
+      setIsRecording(true);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to start recording. Please check microphone permissions.";
+
+      Alert.alert("Recording Error", message);
+      setIsRecording(false);
+      setIsSupported(voiceService.isSupported());
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!isRecording) {
       return;
     }
 
-    Alert.alert("Recording Error", errorMessage, [
-      { text: "OK", onPress: clearError },
-    ]);
-  }, [clearError, errorMessage]);
+    setIsProcessing(true);
+
+    try {
+      const recording = await voiceService.stopRecording();
+      setIsRecording(false);
+      await processVoiceInput(recording);
+    } catch (error) {
+      setIsRecording(false);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to stop recording. Please try again.";
+
+      Alert.alert("Recording Error", message);
+      setIsProcessing(false);
+    }
+  };
+
+  const processVoiceInput = async (recording: VoiceRecording) => {
+    try {
+      if (!openAiClient) {
+        const demoTranscript = "Hello! This is a demo recording.";
+        const demoResponse =
+          "I heard you say: Hello! This is a demo recording. How can I help you manage your todos today?";
+
+        setTranscript(demoTranscript);
+        setResponse(demoResponse);
+        await voiceService.speak(demoResponse);
+        return;
+      }
+
+      const formData = new FormData();
+
+      if (recording.kind === "web") {
+        formData.append("file", recording.blob, "voice-input.webm");
+      } else {
+        formData.append("file", {
+          uri: recording.uri,
+          type: recording.mimeType,
+          name: "voice-input.m4a",
+        } as unknown as Blob);
+      }
+
+      formData.append("model", "whisper-1");
+
+      const { text: transcriptionText } =
+        await openAiClient.createTranscription(formData);
+      const userText = transcriptionText || "Could not transcribe audio";
+      setTranscript(userText);
+
+      let aiResponse: string;
+
+      if (customProcessor) {
+        aiResponse = await customProcessor(userText);
+      } else {
+        aiResponse = await conversationAgent.processMessage(userText);
+      }
+
+      setResponse(aiResponse);
+      await voiceService.speak(aiResponse, { apiKey });
+    } catch {
+      setResponse("Sorry, I could not process your voice input.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePress = async () => {
+    if (!isSupported) {
+      Alert.alert(
+        "Not Supported",
+        "Audio capture is not supported on this platform."
+      );
+      return;
+    }
+
+    if (isRecording) {
+      await stopRecording();
+    } else {
+      await startRecording();
+    }
+  };
 
   return (
     <YStack
@@ -123,7 +242,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         </Text>
       ) : (
         <Text fontSize="$2" color="$gray10" textAlign="center" maxWidth={320}>
-          Using OpenAI Whisper + GPT-4o with platform-native speech playback
+          Using OpenAI Whisper + GPT-4o with todo management capabilities
         </Text>
       )}
     </YStack>
