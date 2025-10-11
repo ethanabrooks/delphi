@@ -1,5 +1,9 @@
-import type { CreateTodoInput, Todo, UpdateTodoInput } from "../types/todo";
-import { TodoService } from "./todoService";
+import type {
+  CreateTodoInput,
+  Priority,
+  Todo,
+  UpdateTodoInput,
+} from "../types/todo";
 
 const isJestEnv =
   typeof globalThis !== "undefined" &&
@@ -93,7 +97,148 @@ class WebTodoService {
   static async clearAllTodos(): Promise<void> {
     WebTodoService.write([]);
   }
+
+  static async getTodoById(id: number): Promise<Todo | null> {
+    const todos = WebTodoService.read();
+    return todos.find((todo) => todo.id === id) || null;
+  }
+
+  static async getIncompleteTodos(): Promise<Todo[]> {
+    const todos = WebTodoService.read();
+    return todos.filter((todo) => !todo.completed);
+  }
+
+  static async getCompletedTodos(): Promise<Todo[]> {
+    const todos = WebTodoService.read();
+    return todos.filter((todo) => todo.completed);
+  }
+
+  static async getTodosByPriority(priority: Priority): Promise<Todo[]> {
+    const todos = WebTodoService.read();
+    return todos.filter((todo) => todo.priority === priority);
+  }
+
+  static async getTodoStats(): Promise<{
+    total: number;
+    completed: number;
+    pending: number;
+    highPriority: number;
+  }> {
+    const todos = WebTodoService.read();
+    return {
+      total: todos.length,
+      completed: todos.filter((todo) => todo.completed).length,
+      pending: todos.filter((todo) => !todo.completed).length,
+      highPriority: todos.filter((todo) => todo.priority === 3).length,
+    };
+  }
 }
 
-export const platformTodoService = isWebPlatform ? WebTodoService : TodoService;
+// Lazy import TodoService only when not on web to avoid SQLite dependency
+let nativeService: typeof import("./todoService").TodoService | null = null;
+
+const getNativeService = async () => {
+  if (!nativeService) {
+    const { TodoService } = await import("./todoService");
+    nativeService = TodoService;
+  }
+  return nativeService;
+};
+
+class PlatformTodoServiceWrapper {
+  static async getAllTodos(): Promise<Todo[]> {
+    if (isWebPlatform) {
+      return WebTodoService.getAllTodos();
+    }
+    const service = await getNativeService();
+    return service.getAllTodos();
+  }
+
+  static async createTodo(input: CreateTodoInput): Promise<Todo> {
+    if (isWebPlatform) {
+      return WebTodoService.createTodo(input);
+    }
+    const service = await getNativeService();
+    return service.createTodo(input);
+  }
+
+  static async updateTodo(input: UpdateTodoInput): Promise<Todo | null> {
+    if (isWebPlatform) {
+      return WebTodoService.updateTodo(input);
+    }
+    const service = await getNativeService();
+    return service.updateTodo(input);
+  }
+
+  static async deleteTodo(id: number): Promise<boolean> {
+    if (isWebPlatform) {
+      return WebTodoService.deleteTodo(id);
+    }
+    const service = await getNativeService();
+    return service.deleteTodo(id);
+  }
+
+  static async toggleTodo(id: number): Promise<Todo | null> {
+    if (isWebPlatform) {
+      return WebTodoService.toggleTodo(id);
+    }
+    const service = await getNativeService();
+    return service.toggleTodo(id);
+  }
+
+  static async clearAllTodos(): Promise<void> {
+    if (isWebPlatform) {
+      return WebTodoService.clearAllTodos();
+    }
+    const service = await getNativeService();
+    return service.clearAllTodos();
+  }
+
+  static async getTodoById(id: number): Promise<Todo | null> {
+    if (isWebPlatform) {
+      return WebTodoService.getTodoById(id);
+    }
+    const service = await getNativeService();
+    return service.getTodoById(id);
+  }
+
+  static async getIncompleteTodos(): Promise<Todo[]> {
+    if (isWebPlatform) {
+      return WebTodoService.getIncompleteTodos();
+    }
+    const service = await getNativeService();
+    return service.getIncompleteTodos();
+  }
+
+  static async getCompletedTodos(): Promise<Todo[]> {
+    if (isWebPlatform) {
+      return WebTodoService.getCompletedTodos();
+    }
+    const service = await getNativeService();
+    return service.getCompletedTodos();
+  }
+
+  static async getTodosByPriority(priority: Priority): Promise<Todo[]> {
+    if (isWebPlatform) {
+      return WebTodoService.getTodosByPriority(priority);
+    }
+    const service = await getNativeService();
+    return service.getTodosByPriority(priority);
+  }
+
+  static async getTodoStats(): Promise<{
+    total: number;
+    completed: number;
+    pending: number;
+    highPriority: number;
+  }> {
+    if (isWebPlatform) {
+      return WebTodoService.getTodoStats();
+    }
+    const service = await getNativeService();
+    return service.getTodoStats();
+  }
+}
+
+export const platformTodoService = PlatformTodoServiceWrapper;
 export type PlatformTodoService = typeof platformTodoService;

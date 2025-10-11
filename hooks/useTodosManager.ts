@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { initializeDatabase } from "../db/database";
 import {
   isWebPlatform,
   platformTodoService,
@@ -54,6 +53,8 @@ export default function useTodosManager(): UseTodosManagerResult {
     const initialize = async () => {
       try {
         if (!isWebPlatform) {
+          // Dynamically import database initialization only for native platforms
+          const { initializeDatabase } = await import("../db/database");
           await initializeDatabase();
         }
         await loadTodos();

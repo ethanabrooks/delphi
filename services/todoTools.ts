@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Priority } from "../types/todo";
 import type { Tool } from "./openaiClient";
-import { TodoService } from "./todoService";
+import { platformTodoService } from "./platformTodoService";
 
 const createTodoSchema = z.object({
   title: z.string(),
@@ -233,7 +233,7 @@ export async function executeTodoFunction(
   try {
     switch (name) {
       case "get_all_todos": {
-        const allTodos = await TodoService.getAllTodos();
+        const allTodos = await platformTodoService.getAllTodos();
         return JSON.stringify(allTodos);
       }
 
@@ -242,7 +242,7 @@ export async function executeTodoFunction(
         if (!idResult.success) {
           return JSON.stringify({ error: "Invalid ID parameter" });
         }
-        const todo = await TodoService.getTodoById(idResult.data.id);
+        const todo = await platformTodoService.getTodoById(idResult.data.id);
         return JSON.stringify(todo);
       }
 
@@ -254,7 +254,7 @@ export async function executeTodoFunction(
             details: createResult.error.issues,
           });
         }
-        const newTodo = await TodoService.createTodo({
+        const newTodo = await platformTodoService.createTodo({
           ...createResult.data,
           priority: createResult.data.priority as Priority,
         });
@@ -269,7 +269,7 @@ export async function executeTodoFunction(
             details: updateResult.error.issues,
           });
         }
-        const updatedTodo = await TodoService.updateTodo({
+        const updatedTodo = await platformTodoService.updateTodo({
           ...updateResult.data,
           priority: updateResult.data.priority as Priority,
         });
@@ -281,7 +281,7 @@ export async function executeTodoFunction(
         if (!deleteResult.success) {
           return JSON.stringify({ error: "Invalid ID parameter" });
         }
-        const deleteSuccess = await TodoService.deleteTodo(
+        const deleteSuccess = await platformTodoService.deleteTodo(
           deleteResult.data.id
         );
         return JSON.stringify({ success: deleteSuccess });
@@ -292,17 +292,19 @@ export async function executeTodoFunction(
         if (!toggleResult.success) {
           return JSON.stringify({ error: "Invalid ID parameter" });
         }
-        const toggledTodo = await TodoService.toggleTodo(toggleResult.data.id);
+        const toggledTodo = await platformTodoService.toggleTodo(
+          toggleResult.data.id
+        );
         return JSON.stringify(toggledTodo);
       }
 
       case "get_incomplete_todos": {
-        const incompleteTodos = await TodoService.getIncompleteTodos();
+        const incompleteTodos = await platformTodoService.getIncompleteTodos();
         return JSON.stringify(incompleteTodos);
       }
 
       case "get_completed_todos": {
-        const completedTodos = await TodoService.getCompletedTodos();
+        const completedTodos = await platformTodoService.getCompletedTodos();
         return JSON.stringify(completedTodos);
       }
 
@@ -311,19 +313,19 @@ export async function executeTodoFunction(
         if (!priorityResult.success) {
           return JSON.stringify({ error: "Invalid priority parameter" });
         }
-        const priorityTodos = await TodoService.getTodosByPriority(
+        const priorityTodos = await platformTodoService.getTodosByPriority(
           priorityResult.data.priority as Priority
         );
         return JSON.stringify(priorityTodos);
       }
 
       case "get_todo_stats": {
-        const stats = await TodoService.getTodoStats();
+        const stats = await platformTodoService.getTodoStats();
         return JSON.stringify(stats);
       }
 
       case "clear_all_todos":
-        await TodoService.clearAllTodos();
+        await platformTodoService.clearAllTodos();
         return JSON.stringify({ success: true, message: "All todos cleared" });
 
       default:
