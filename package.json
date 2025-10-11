@@ -24,7 +24,6 @@
     "@tamagui/scroll-view": "^1.135.2",
     "@tamagui/stacks": "^1.135.2",
     "@tamagui/text": "^1.135.2",
-    "@testing-library/jest-native": "^5.4.3",
     "abort-controller": "^3.0.0",
     "drizzle-kit": "^0.31.5",
     "drizzle-orm": "^0.44.6",
@@ -43,6 +42,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",
     "@types/react": "^19.1.0",
