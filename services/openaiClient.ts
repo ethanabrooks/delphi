@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 const OPENAI_BASE_URL = "https://api.openai.com";
 
 export type ChatCompletionMessage = {
@@ -30,56 +32,52 @@ export class OpenAIClientError extends Error {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+const transcriptionSchema = z.object({
+  text: z.string(),
+});
 
-function ensureString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
+const chatCompletionSchema = z.object({
+  choices: z
+    .array(
+      z.object({
+        message: z.object({
+          content: z.string(),
+        }),
+      })
+    )
+    .min(1, "OpenAI response did not include any choices"),
+});
 
 function parseTranscription(json: unknown): TranscriptionResult {
-  if (!isRecord(json)) {
-    throw new OpenAIClientError("Invalid transcription payload shape");
+  const result = transcriptionSchema.safeParse(json);
+
+  if (!result.success) {
+    throw new OpenAIClientError(
+      "Invalid transcription payload returned by OpenAI",
+      undefined,
+      result.error
+    );
   }
 
-  const text = ensureString(json.text);
-
-  if (!text) {
-    throw new OpenAIClientError("Transcription payload missing text field");
-  }
-
-  return { text };
+  return result.data;
 }
 
 function parseChatCompletion(json: unknown): ChatCompletionResult {
-  if (!isRecord(json)) {
-    throw new OpenAIClientError("Invalid chat completion payload shape");
+  const result = chatCompletionSchema.safeParse(json);
+
+  if (!result.success) {
+    throw new OpenAIClientError(
+      "Invalid chat completion payload returned by OpenAI",
+      undefined,
+      result.error
+    );
   }
 
-  const choices = json.choices;
-
-  if (!Array.isArray(choices) || choices.length === 0) {
-    throw new OpenAIClientError("Chat completion payload missing choices");
-  }
-
-  const firstChoice = choices[0];
-
-  if (!isRecord(firstChoice)) {
-    throw new OpenAIClientError("Chat completion choice is not an object");
-  }
-
-  const message = firstChoice.message;
-
-  if (!isRecord(message)) {
-    throw new OpenAIClientError("Chat completion choice missing message");
-  }
-
-  const content = ensureString(message.content);
-
-  if (!content) {
-    throw new OpenAIClientError("Chat completion message missing content");
-  }
+  const [
+    {
+      message: { content },
+    },
+  ] = result.data.choices;
 
   return { content };
 }
