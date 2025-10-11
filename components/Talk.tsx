@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Platform } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert } from "react-native";
 import { Button, Text, YStack } from "tamagui";
+import voiceService, { type VoiceRecording } from "../services/voiceService";
 
 interface TalkProps {
   apiKey?: string;
@@ -12,246 +13,171 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
-  const [isSupported, setIsSupported] = useState(true);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-
-  const checkWebAudioSupport = useCallback(() => {
-    if (Platform.OS === "web") {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setIsSupported(false);
-      }
-    }
-  }, []);
+  const [isSupported, setIsSupported] = useState(() =>
+    voiceService.isSupported()
+  );
 
   useEffect(() => {
-    checkWebAudioSupport();
-  }, [checkWebAudioSupport]);
+    setIsSupported(voiceService.isSupported());
 
-  const convertTextToSpeech = async (text: string, apiKey: string) => {
+    return () => {
+      void voiceService.cancelRecording();
+    };
+  }, []);
+
+  const startRecording = async () => {
     try {
-      const response = await fetch("https://api.openai.com/v1/audio/speech", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "tts-1",
-          input: text,
-          voice: "alloy",
-          speed: 1.0, // Keep at 1.0 to avoid robotic sound
-        }),
-      });
+      setTranscript("");
+      setResponse("");
+      await voiceService.startRecording();
+      setIsRecording(true);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to start recording. Please check microphone permissions.";
 
-      if (!response.ok) {
-        throw new Error(`TTS API failed: ${response.status}`);
-      }
-
-      const audioData = await response.arrayBuffer();
-      const audioBlob = new Blob([audioData], { type: "audio/mpeg" });
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      const audio = new Audio(audioUrl);
-      await audio.play();
-
-      // Clean up the blob URL after playing
-      audio.addEventListener("ended", () => {
-        URL.revokeObjectURL(audioUrl);
-      });
-    } catch (_error) {
-      // Silent fallback to Web Speech API if OpenAI TTS fails
-      if ("speechSynthesis" in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.0; // Keep at default speed for better quality
-        speechSynthesis.speak(utterance);
-      }
+      Alert.alert("Recording Error", message);
+      setIsRecording(false);
+      setIsSupported(voiceService.isSupported());
     }
   };
 
-  const startRecording = async () => {
-    if (Platform.OS !== "web") {
-      Alert.alert(
-        "Platform not supported",
-        "This component is designed for web use"
-      );
+  const stopRecording = async () => {
+    if (!isRecording) {
       return;
     }
 
+    setIsProcessing(true);
+
     try {
-      setIsRecording(true);
-      setTranscript("");
-      setResponse("");
-      audioChunksRef.current = [];
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/wav",
-        });
-
-        // Stop all audio tracks
-        for (const track of stream.getTracks()) {
-          track.stop();
-        }
-
-        if (apiKey) {
-          await processVoiceInput(audioBlob);
-        } else {
-          // Demo mode
-          setTranscript("Hello! This is a web demo recording.");
-          setResponse(
-            "I heard you say: Hello! This is a web demo recording. How can I help you today?"
-          );
-
-          // Use Web Speech API for TTS in demo mode (fallback)
-          if ("speechSynthesis" in window) {
-            const utterance = new SpeechSynthesisUtterance(
-              "I heard you say: Hello! This is a web demo recording. How can I help you today?"
-            );
-            utterance.rate = 1.0; // Keep at default speed for better quality
-            speechSynthesis.speak(utterance);
-          }
-        }
-
-        setIsProcessing(false);
-      };
-
-      mediaRecorder.start();
-      mediaRecorderRef.current = mediaRecorder;
-    } catch {
+      const recording = await voiceService.stopRecording();
       setIsRecording(false);
-      Alert.alert(
-        "Recording Error",
-        "Failed to access microphone. Please ensure microphone permissions are granted."
-      );
+      await processVoiceInput(recording);
+    } catch (error) {
+      setIsRecording(false);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to stop recording. Please try again.";
+
+      Alert.alert("Recording Error", message);
+      setIsProcessing(false);
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      setIsProcessing(true);
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  };
-
-  const processVoiceInput = async (audioBlob: Blob) => {
+  const processVoiceInput = async (recording: VoiceRecording) => {
     try {
       if (!apiKey) {
-        throw new Error("OpenAI API key not provided");
+        const demoTranscript = "Hello! This is a demo recording.";
+        const demoResponse =
+          "I heard you say: Hello! This is a demo recording. How can I help you today?";
+
+        setTranscript(demoTranscript);
+        setResponse(demoResponse);
+        await voiceService.speak(demoResponse);
+        return;
       }
 
-      // Convert blob to base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          // Use OpenAI Speech-to-Text API
-          const formData = new FormData();
-          formData.append("file", audioBlob, "audio.wav");
-          formData.append("model", "whisper-1");
+      const formData = new FormData();
 
-          const transcriptionResponse = await fetch(
-            "https://api.openai.com/v1/audio/transcriptions",
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-              },
-              body: formData,
-            }
-          );
+      if (recording.kind === "web") {
+        formData.append("file", recording.blob, "voice-input.webm");
+      } else {
+        formData.append("file", {
+          uri: recording.uri,
+          type: recording.mimeType,
+          name: "voice-input.m4a",
+        } as unknown as Blob);
+      }
 
-          if (!transcriptionResponse.ok) {
-            throw new Error(
-              `Transcription failed: ${transcriptionResponse.status}`
-            );
-          }
+      formData.append("model", "whisper-1");
 
-          const transcriptionData = await transcriptionResponse.json();
-          const userText =
-            transcriptionData.text || "Could not transcribe audio";
-          setTranscript(userText);
-
-          // Use custom processor if available, otherwise use OpenAI Chat API
-          let aiResponse: string;
-
-          if (customProcessor) {
-            aiResponse = await customProcessor(userText);
-          } else {
-            // Get AI response using OpenAI Chat API
-            const chatResponse = await fetch(
-              "https://api.openai.com/v1/chat/completions",
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${apiKey}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  model: "gpt-4o",
-                  messages: [
-                    {
-                      role: "system",
-                      content:
-                        "You are a helpful voice assistant. Keep responses conversational and concise.",
-                    },
-                    {
-                      role: "user",
-                      content: userText,
-                    },
-                  ],
-                  max_tokens: 150,
-                }),
-              }
-            );
-
-            if (!chatResponse.ok) {
-              throw new Error(`Chat API failed: ${chatResponse.status}`);
-            }
-
-            const chatData = await chatResponse.json();
-            aiResponse =
-              chatData.choices?.[0]?.message?.content ||
-              "Sorry, I could not process your request.";
-          }
-
-          setResponse(aiResponse);
-
-          // Convert AI response to speech using OpenAI TTS API
-          await convertTextToSpeech(aiResponse, apiKey);
-        } catch {
-          setResponse("Sorry, I encountered an error processing your request.");
+      const transcriptionResponse = await fetch(
+        "https://api.openai.com/v1/audio/transcriptions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: formData,
         }
-      };
+      );
 
-      reader.readAsDataURL(audioBlob);
+      if (!transcriptionResponse.ok) {
+        throw new Error(
+          `Transcription failed: ${transcriptionResponse.status}`
+        );
+      }
+
+      const transcriptionData: { text?: string } =
+        await transcriptionResponse.json();
+      const userText = transcriptionData.text ?? "Could not transcribe audio";
+      setTranscript(userText);
+
+      let aiResponse: string;
+
+      if (customProcessor) {
+        aiResponse = await customProcessor(userText);
+      } else {
+        const chatResponse = await fetch(
+          "https://api.openai.com/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "gpt-4o",
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are a helpful voice assistant. Keep responses conversational and concise.",
+                },
+                {
+                  role: "user",
+                  content: userText,
+                },
+              ],
+              max_tokens: 150,
+            }),
+          }
+        );
+
+        if (!chatResponse.ok) {
+          throw new Error(`Chat API failed: ${chatResponse.status}`);
+        }
+
+        const chatData = await chatResponse.json();
+        aiResponse =
+          chatData.choices?.[0]?.message?.content ??
+          "Sorry, I could not process your request.";
+      }
+
+      setResponse(aiResponse);
+      await voiceService.speak(aiResponse, { apiKey });
     } catch {
       setResponse("Sorry, I could not process your voice input.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const handlePress = () => {
+  const handlePress = async () => {
     if (!isSupported) {
       Alert.alert(
         "Not Supported",
-        "Web Audio API is not supported in this browser"
+        "Audio capture is not supported on this platform."
       );
       return;
     }
 
     if (isRecording) {
-      stopRecording();
+      await stopRecording();
     } else {
-      startRecording();
+      await startRecording();
     }
   };
 
@@ -275,8 +201,8 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
           marginBottom="$4"
         >
           <Text color="$yellow11" textAlign="center">
-            Web Audio not supported in this browser. Please use Chrome, Firefox,
-            or Safari.
+            Audio capture is unavailable. Please switch to a compatible device
+            or browser.
           </Text>
         </YStack>
       )}
@@ -348,7 +274,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         </Text>
       ) : (
         <Text fontSize="$2" color="$gray10" textAlign="center" maxWidth={320}>
-          Using OpenAI Whisper + GPT-4o + TTS-1 (High Quality Voice)
+          Using OpenAI Whisper + GPT-4o with platform-native speech playback
         </Text>
       )}
     </YStack>
