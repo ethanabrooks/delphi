@@ -208,7 +208,7 @@ export default function TodoList() {
                 <YStack>
                   <XStack justifyContent="space-between" alignItems="center">
                     <Text fontSize="$3" flex={1} marginRight="$2">
-                      #{todo.priority} {todo.title}
+                      ID:{todo.id} #{todo.priority} {todo.title}
                     </Text>
                     <XStack gap="$1">
                       <Button
