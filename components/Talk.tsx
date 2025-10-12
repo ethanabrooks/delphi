@@ -182,6 +182,21 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 
   return (
     <View style={styles.container}>
+      {/* Background video - add your video file to assets/videos/background-video.mp4 */}
+      {/*
+      <Video
+        style={StyleSheet.absoluteFillObject}
+        source={{
+          uri: require("../assets/videos/background-video.mp4"),
+        }}
+        shouldPlay={true}
+        isLooping={true}
+        isMuted={true}
+        resizeMode={ResizeMode.COVER}
+        useNativeControls={false}
+      />
+      */}
+
       {/* Discrete hamburger menu */}
       <Link href="/todo" style={styles.hamburger}>
         <Text style={styles.hamburgerText}>☰</Text>
@@ -233,7 +248,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#000000", // Change to "transparent" when video is enabled
   },
   hamburger: {
     position: "absolute",
