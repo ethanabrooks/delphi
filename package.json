@@ -28,6 +28,7 @@
     "@tamagui/config": "^1.135.2",
     "@tamagui/core": "^1.135.2",
     "@tamagui/input": "^1.135.2",
+    "@tamagui/lucide-icons": "^1.135.2",
     "@tamagui/scroll-view": "^1.135.2",
     "@tamagui/stacks": "^1.135.2",
     "@tamagui/text": "^1.135.2",

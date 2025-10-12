@@ -2,6 +2,7 @@ import { Link } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Alert, Animated, StyleSheet } from "react-native";
 import { Button, Card, Input, ScrollView, Text, View, XStack } from "tamagui";
+import { Mic } from "@tamagui/lucide-icons";
 import useTodosManager from "../hooks/useTodosManager";
 import type { Todo } from "../types/todo";
 import { getNextHighestPriority } from "../utils/priorityUtils";
@@ -107,9 +108,9 @@ export default function TodoList() {
 
   return (
     <View style={styles.container}>
-      {/* Minimal hamburger menu */}
+      {/* Talk navigation */}
       <Link href="/talk" style={styles.hamburger}>
-        <Text style={styles.hamburgerText}>☰</Text>
+        <Mic size={24} color="#888888" />
       </Link>
 
       <View style={styles.content}>
@@ -293,10 +294,6 @@ const styles = StyleSheet.create({
     right: 20,
     zIndex: 10,
     padding: 10,
-  },
-  hamburgerText: {
-    fontSize: 24,
-    color: "#666666",
   },
   content: {
     flex: 1,
