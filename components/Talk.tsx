@@ -140,8 +140,8 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     }
   };
 
-  const handlePress = async () => {
-    console.log("Talk button pressed, isRecording:", isRecording, "isProcessing:", isProcessing);
+  const handlePressIn = async () => {
+    console.log("Talk button pressed down, starting recording...");
 
     if (!isSupported) {
       Alert.alert(
@@ -151,12 +151,18 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
       return;
     }
 
+    if (!isRecording && !isProcessing) {
+      console.log("Starting recording...");
+      await startRecording();
+    }
+  };
+
+  const handlePressOut = async () => {
+    console.log("Talk button released, stopping recording...");
+
     if (isRecording) {
       console.log("Stopping recording...");
       await stopRecording();
-    } else {
-      console.log("Starting recording...");
-      await startRecording();
     }
   };
 
@@ -194,7 +200,8 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
       )}
 
       <Button
-        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         disabled={isProcessing || !isSupported}
         width={128}
         height={128}
@@ -214,17 +221,18 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         animation="bouncy"
       >
         <Text
-          fontSize="$5"
+          fontSize="$4"
           fontWeight="600"
           color={!isSupported ? "$gray10" : "white"}
+          textAlign="center"
         >
           {!isSupported
             ? "Not Supported"
             : isProcessing
               ? "Processing..."
               : isRecording
-                ? "🔴 Stop Recording"
-                : "🎤 Start Recording"}
+                ? "🔴 Recording...\nRelease to Stop"
+                : "🎤 Hold to Record"}
         </Text>
       </Button>
 
