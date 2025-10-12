@@ -8,30 +8,30 @@ jest.mock("expo-router", () => {
   const { Text } = require("react-native");
 
   const screenSpy = jest.fn();
-  const tabsSpy = jest.fn();
+  const stackSpy = jest.fn();
 
-  const Tabs = ({
+  const Stack = ({
     children,
     ...rest
   }: {
     children?: React.ReactNode;
     [key: string]: unknown;
   }) => {
-    tabsSpy(rest);
+    stackSpy(rest);
     return <>{children}</>;
   };
 
-  Tabs.Screen = ({ name, options }: { name: string; options?: unknown }) => {
+  Stack.Screen = ({ name, options }: { name: string; options?: unknown }) => {
     screenSpy({ name, options });
     return null;
   };
 
   return {
-    Tabs,
+    Stack,
     Redirect: ({ href }: { href: string }) => (
       <Text testID="redirect-target">{href}</Text>
     ),
-    __tabsSpy: tabsSpy,
+    __stackSpy: stackSpy,
     __screenSpy: screenSpy,
   };
 });
@@ -40,8 +40,8 @@ jest.mock("expo-status-bar", () => ({
   StatusBar: () => null,
 }));
 
-const { __tabsSpy, __screenSpy } = jest.requireMock("expo-router") as {
-  __tabsSpy: jest.Mock;
+const { __stackSpy, __screenSpy } = jest.requireMock("expo-router") as {
+  __stackSpy: jest.Mock;
   __screenSpy: jest.Mock;
 };
 
@@ -51,18 +51,18 @@ import IndexRoute from "../app/index";
 
 describe("navigation", () => {
   beforeEach(() => {
-    __tabsSpy.mockClear();
+    __stackSpy.mockClear();
     __screenSpy.mockClear();
   });
 
-  test("root layout registers talk and todo tabs", () => {
+  test("root layout registers talk and todo screens", () => {
     render(<RootLayout />);
 
     const screenCalls = __screenSpy.mock.calls.map(
       ([payload]) => payload as { name: string; options?: unknown }
     );
     expect(screenCalls.map((call) => call.name)).toEqual(["talk", "todo"]);
-    expect(__tabsSpy).toHaveBeenCalled();
+    expect(__stackSpy).toHaveBeenCalled();
   });
 
   test("index route redirects to talk", () => {

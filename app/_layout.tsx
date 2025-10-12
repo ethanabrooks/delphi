@@ -1,4 +1,4 @@
-import { Tabs } from "expo-router";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useMemo } from "react";
 import { TamaguiProvider } from "tamagui";
@@ -10,15 +10,14 @@ export default function RootLayout() {
   return (
     <TamaguiProvider config={config}>
       <StatusBar style="auto" />
-      <Tabs
+      <Stack
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: "#2563eb",
         }}
       >
-        <Tabs.Screen name="talk" options={{ title: "Talk" }} />
-        <Tabs.Screen name="todo" options={{ title: "Todo" }} />
-      </Tabs>
+        <Stack.Screen name="talk" />
+        <Stack.Screen name="todo" />
+      </Stack>
     </TamaguiProvider>
   );
 }
