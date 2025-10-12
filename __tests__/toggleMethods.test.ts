@@ -52,9 +52,9 @@ describe("Toggle Methods", () => {
 
     // Toggle back to active
     expect(completed).not.toBeNull();
-    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
     const reactivated = await platformTodoService.toggleCompleted(
-      completed?.id
+      // biome-ignore lint/style/noNonNullAssertion: checked above with expect
+      completed!.id
     );
     expect(reactivated?.status).toBe("active");
     expect(reactivated?.priority).toBe(1);
@@ -146,27 +146,29 @@ describe("Toggle Methods", () => {
 
     // Toggle both back to active using appropriate methods
     expect(completedA).not.toBeNull();
-    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
     const uncompletedA = await platformTodoService.toggleCompleted(
-      completedA?.id
+      // biome-ignore lint/style/noNonNullAssertion: checked above with expect
+      completedA!.id
     );
     expect(archivedB).not.toBeNull();
-    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
-    const unarchivedB = await platformTodoService.toggleArchived(archivedB!.id);
+    const unarchivedB = await platformTodoService.toggleArchived(
+      // biome-ignore lint/style/noNonNullAssertion: checked above with expect
+      archivedB!.id
+    );
 
     expect(uncompletedA?.status).toBe("active");
     expect(unarchivedB?.status).toBe("active");
 
     // Toggle them again - they should go back to their original states
     expect(uncompletedA).not.toBeNull();
-    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
     const retriggeredA = await platformTodoService.toggleCompleted(
-      uncompletedA?.id
+      // biome-ignore lint/style/noNonNullAssertion: checked above with expect
+      uncompletedA!.id
     );
     expect(unarchivedB).not.toBeNull();
-    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
     const retriggeredB = await platformTodoService.toggleArchived(
-      unarchivedB?.id
+      // biome-ignore lint/style/noNonNullAssertion: checked above with expect
+      unarchivedB!.id
     );
 
     expect(retriggeredA?.status).toBe("completed");
