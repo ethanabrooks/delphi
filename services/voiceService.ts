@@ -28,6 +28,7 @@ interface VoiceService {
   stopRecording(): Promise<VoiceRecording>;
   cancelRecording(): Promise<void>;
   speak(text: string, options?: { apiKey?: string }): Promise<void>;
+  stopSpeaking(): void;
 }
 
 class NativeVoiceService implements VoiceService {
@@ -124,12 +125,17 @@ class NativeVoiceService implements VoiceService {
       });
     });
   }
+
+  stopSpeaking(): void {
+    Speech.stop();
+  }
 }
 
 class WebVoiceService implements VoiceService {
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
   private stream: MediaStream | null = null;
+  private activeAudio: HTMLAudioElement | null = null;
 
   isSupported() {
     if (typeof navigator === "undefined") {
@@ -213,6 +219,9 @@ class WebVoiceService implements VoiceService {
       return;
     }
 
+    // Stop any ongoing speech before starting new speech
+    this.stopSpeaking();
+
     const speakWithWebSpeech = () => {
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         const utterance = new SpeechSynthesisUtterance(text);
@@ -250,13 +259,43 @@ class WebVoiceService implements VoiceService {
       const url = URL.createObjectURL(blob);
       const audio = new window.Audio(url);
 
+      // Track the active audio element
+      this.activeAudio = audio;
+
       await audio.play();
 
       audio.addEventListener("ended", () => {
         URL.revokeObjectURL(url);
+        if (this.activeAudio === audio) {
+          this.activeAudio = null;
+        }
+      });
+
+      audio.addEventListener("pause", () => {
+        if (this.activeAudio === audio) {
+          this.activeAudio = null;
+        }
       });
     } catch {
       speakWithWebSpeech();
+    }
+  }
+
+  stopSpeaking(): void {
+    // Stop Web Speech API
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    // Stop OpenAI TTS audio if active
+    if (this.activeAudio) {
+      try {
+        this.activeAudio.pause();
+        this.activeAudio.currentTime = 0;
+      } catch {
+        // Ignore errors during audio stopping
+      }
+      this.activeAudio = null;
     }
   }
 
@@ -270,6 +309,7 @@ class WebVoiceService implements VoiceService {
     this.mediaRecorder = null;
     this.audioChunks = [];
     this.stream = null;
+    this.activeAudio = null;
   }
 }
 

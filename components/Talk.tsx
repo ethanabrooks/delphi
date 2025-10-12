@@ -152,6 +152,8 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     }
 
     if (!isRecording && !isProcessing) {
+      // Stop any ongoing speech before starting to record
+      voiceService.stopSpeaking();
       console.log("Starting recording...");
       await startRecording();
     }
