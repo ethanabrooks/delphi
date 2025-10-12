@@ -1,5 +1,5 @@
 import type { Tool } from "./openaiClient";
-import { SqlService } from "./sqlService";
+import { executeQuery, formatResults } from "./sqlService";
 
 // SQL tools for OpenAI function calling
 export const SQL_TOOLS: Tool[] = [
@@ -40,8 +40,8 @@ export async function executeSqlFunction(
       return "❌ Invalid query: 'query' parameter must be a non-empty string";
     }
 
-    const result = await SqlService.executeQuery(query);
-    return SqlService.formatResults(result);
+    const result = await executeQuery(query);
+    return formatResults(result);
   } catch (error) {
     if (error instanceof SyntaxError) {
       return "❌ Invalid function arguments: Expected JSON format";
