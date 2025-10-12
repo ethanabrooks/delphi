@@ -52,6 +52,7 @@ describe("Toggle Methods", () => {
 
     // Toggle back to active
     expect(completed).not.toBeNull();
+    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
     const reactivated = await platformTodoService.toggleCompleted(
       completed?.id
     );
@@ -75,7 +76,8 @@ describe("Toggle Methods", () => {
 
     // Toggle back to active
     expect(archived).not.toBeNull();
-    const reactivated = await platformTodoService.toggleArchived(archived?.id);
+    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
+    const reactivated = await platformTodoService.toggleArchived(archived!.id);
     expect(reactivated?.status).toBe("active");
     expect(reactivated?.priority).toBe(1); // Reactivated at priority 1
   });
@@ -94,7 +96,8 @@ describe("Toggle Methods", () => {
 
     // Try to toggle archived todo with toggleCompleted - should be unchanged
     expect(archived).not.toBeNull();
-    const result = await platformTodoService.toggleCompleted(archived?.id);
+    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
+    const result = await platformTodoService.toggleCompleted(archived!.id);
     expect(result?.status).toBe("archived"); // Should remain archived
   });
 
@@ -112,7 +115,8 @@ describe("Toggle Methods", () => {
 
     // Try to toggle completed todo with toggleArchived - should be unchanged
     expect(completed).not.toBeNull();
-    const result = await platformTodoService.toggleArchived(completed?.id);
+    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
+    const result = await platformTodoService.toggleArchived(completed!.id);
     expect(result?.status).toBe("completed"); // Should remain completed
   });
 
@@ -142,21 +146,25 @@ describe("Toggle Methods", () => {
 
     // Toggle both back to active using appropriate methods
     expect(completedA).not.toBeNull();
+    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
     const uncompletedA = await platformTodoService.toggleCompleted(
       completedA?.id
     );
     expect(archivedB).not.toBeNull();
-    const unarchivedB = await platformTodoService.toggleArchived(archivedB?.id);
+    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
+    const unarchivedB = await platformTodoService.toggleArchived(archivedB!.id);
 
     expect(uncompletedA?.status).toBe("active");
     expect(unarchivedB?.status).toBe("active");
 
     // Toggle them again - they should go back to their original states
     expect(uncompletedA).not.toBeNull();
+    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
     const retriggeredA = await platformTodoService.toggleCompleted(
       uncompletedA?.id
     );
     expect(unarchivedB).not.toBeNull();
+    // biome-ignore lint/style/noNonNullAssertion: checked above with expect
     const retriggeredB = await platformTodoService.toggleArchived(
       unarchivedB?.id
     );
