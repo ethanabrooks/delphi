@@ -1,7 +1,7 @@
-import { useRouter } from "expo-router";
+import { Link } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { Alert } from "react-native";
-import { Button, Card, Input, ScrollView, Text, XStack, YStack } from "tamagui";
+import { Alert, Animated, StyleSheet } from "react-native";
+import { Button, Card, Input, ScrollView, Text, View, XStack } from "tamagui";
 import useTodosManager from "../hooks/useTodosManager";
 import type { Todo } from "../types/todo";
 import { getNextHighestPriority } from "../utils/priorityUtils";
@@ -9,29 +9,22 @@ import { getNextHighestPriority } from "../utils/priorityUtils";
 // Removed all styled components - using Tamagui components directly
 
 export default function TodoList() {
-  const router = useRouter();
   const [newTodo, setNewTodo] = useState("");
-  const [selectedTodoId, setSelectedTodoId] = useState<number | null>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const completedAnimation = new Animated.Value(0);
+  const archivedAnimation = new Animated.Value(0);
   const {
     todos,
     stats,
-    isLoading,
     error,
     addTodo,
     updateTodo,
     toggleCompleted,
     toggleArchived,
-    refetch,
   } = useTodosManager();
 
-  // Debug function to clear all todos
-  const clearAllTodos = async () => {
-    if (window.confirm("Delete all todos? This cannot be undone.")) {
-      localStorage.removeItem("delphi_todos");
-      await refetch();
-    }
-  };
-  const { total, active, completed, archived } = stats;
+  const { completed, archived } = stats;
 
   // Memoized status buckets
   const todosByStatus = useMemo(() => {
@@ -74,28 +67,6 @@ export default function TodoList() {
     [toggleArchived]
   );
 
-  const handleMoveTodo = useCallback(
-    async (todo: Todo, direction: "up" | "down") => {
-      if (todo.status !== "active" || todo.priority === null) return;
-
-      // Simple increment/decrement approach (0-based)
-      const newPriority =
-        direction === "up"
-          ? Math.max(1, todo.priority - 1) // Move up = lower priority number (min 1)
-          : todo.priority + 1; // Move down = higher priority number
-
-      // Update the todo's priority in the database
-      await updateTodo({
-        id: todo.id,
-        priority: newPriority,
-      });
-
-      // Refetch all todos from the database to get the updated order
-      await refetch();
-    },
-    [refetch, updateTodo]
-  );
-
   const handleArchiveTodo = useCallback(
     async (todo: Todo) => {
       if (todo.status !== "active") return;
@@ -108,268 +79,269 @@ export default function TodoList() {
     [updateTodo]
   );
 
+  const toggleCompletedSection = useCallback(() => {
+    const toValue = showCompleted ? 0 : 1;
+    setShowCompleted(!showCompleted);
+
+    Animated.timing(completedAnimation, {
+      toValue,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [showCompleted, completedAnimation]);
+
+  const toggleArchivedSection = useCallback(() => {
+    const toValue = showArchived ? 0 : 1;
+    setShowArchived(!showArchived);
+
+    Animated.timing(archivedAnimation, {
+      toValue,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [showArchived, archivedAnimation]);
+
   // Keyboard navigation support
 
   const { activeTodos, completedTodos, archivedTodos } = todosByStatus;
 
   return (
-    <YStack flex={1} padding="$4">
-      <XStack
-        justifyContent="space-between"
-        alignItems="center"
-        marginBottom="$4"
-      >
-        <Button size="$3" theme="blue" onPress={() => router.push("/talk")}>
-          ← Talk
-        </Button>
-        <Text
-          fontSize="$6"
-          fontWeight="bold"
-          color="$gray12"
-          flex={1}
-          textAlign="center"
-        >
-          Todo Debug Board
-        </Text>
-        <Button size="$3" theme="red" onPress={clearAllTodos}>
-          Clear All
-        </Button>
-      </XStack>
+    <View style={styles.container}>
+      {/* Minimal hamburger menu */}
+      <Link href="/talk" style={styles.hamburger}>
+        <Text style={styles.hamburgerText}>☰</Text>
+      </Link>
 
-      {/* Error display */}
-      {error && (
-        <Card backgroundColor="$red3" padding="$2" marginBottom="$3">
-          <Text color="$red11" textAlign="center" fontSize="$3">
-            {error}
-          </Text>
-        </Card>
-      )}
+      <View style={styles.content}>
+        {/* Error display */}
+        {error && (
+          <Card
+            backgroundColor="rgba(255, 0, 0, 0.1)"
+            padding="$3"
+            marginBottom="$4"
+          >
+            <Text color="#ff6666" textAlign="center" fontSize="$3">
+              {error}
+            </Text>
+          </Card>
+        )}
 
-      {/* Stats */}
-      <Card backgroundColor="$gray3" padding="$2" marginBottom="$3">
-        <Text textAlign="center" color="$gray11" fontSize="$3">
-          {active} active, {completed} completed, {archived} archived ({total}{" "}
-          total)
-        </Text>
-      </Card>
+        {/* Add new todo input */}
+        <View style={styles.inputContainer}>
+          <Input
+            value={newTodo}
+            onChangeText={setNewTodo}
+            onSubmitEditing={handleAddTodo}
+            placeholder="What needs to be done?"
+            placeholderTextColor="#666666"
+            style={styles.input}
+            testID="todo-input"
+          />
+        </View>
 
-      {/* Keyboard shortcuts */}
-      <Card backgroundColor="$gray2" padding="$2" marginBottom="$3">
-        <Text textAlign="center" color="$gray10" fontSize="$2">
-          💡 Enter: Add todo | ↑↓: Move/Select | Enter: Toggle | Del: Archive
-        </Text>
-      </Card>
+        <ScrollView flex={1} showsVerticalScrollIndicator={false}>
+          {/* Active Todos */}
+          {activeTodos.map((todo) => (
+            <Card key={todo.id} style={styles.todoCard}>
+              <Text style={styles.todoText}>{todo.title}</Text>
+              <XStack style={styles.todoActions}>
+                <Button
+                  size="$2"
+                  style={styles.actionButton}
+                  onPress={() => handleToggleCompleted(todo)}
+                >
+                  <Text color="#ffffff" fontSize="$2">
+                    Done
+                  </Text>
+                </Button>
+                <Button
+                  size="$2"
+                  style={styles.actionButton}
+                  onPress={() => handleArchiveTodo(todo)}
+                >
+                  <Text color="#ffffff" fontSize="$2">
+                    Archive
+                  </Text>
+                </Button>
+              </XStack>
+            </Card>
+          ))}
 
-      {/* Three column layout */}
-      <XStack flex={1} gap="$3">
-        {/* Active Column */}
-        <YStack
-          flex={1}
-          backgroundColor="$gray2"
-          padding="$3"
-          borderRadius="$3"
-        >
-          <Text fontSize="$4" fontWeight="bold" marginBottom="$3">
-            Active ({active})
-          </Text>
-
-          {/* Add new todo form */}
-          <XStack marginBottom="$3" gap="$2">
-            <Input
-              value={newTodo}
-              onChangeText={setNewTodo}
-              onSubmitEditing={handleAddTodo}
-              placeholder="Add todo..."
-              flex={1}
-              size="$3"
-              testID="todo-input"
-            />
-            <Button
-              onPress={handleAddTodo}
-              disabled={isLoading}
-              size="$3"
-              testID="add-todo-button"
+          {activeTodos.length === 0 && (
+            <Text
+              style={[
+                styles.todoText,
+                { textAlign: "center", opacity: 0.5, marginTop: 40 },
+              ]}
             >
-              +
-            </Button>
-          </XStack>
+              No active todos
+            </Text>
+          )}
 
-          <ScrollView flex={1}>
-            {activeTodos.map((todo, index) => (
-              <Card
-                key={todo.id}
-                padding="$2"
-                marginBottom="$2"
-                backgroundColor={
-                  selectedTodoId === todo.priority ? "$blue3" : "$background"
-                }
-                borderColor={
-                  selectedTodoId === todo.priority ? "$blue8" : "transparent"
-                }
-                borderWidth={1}
-                onPress={() => setSelectedTodoId(todo.priority)}
-                cursor="pointer"
+          {/* Completed Todos Section */}
+          {completed > 0 && (
+            <>
+              <Button
+                style={styles.toggleButton}
+                onPress={toggleCompletedSection}
               >
-                <YStack>
-                  <XStack justifyContent="space-between" alignItems="center">
-                    <Text fontSize="$3" flex={1} marginRight="$2">
-                      ID:{todo.id} #{todo.priority} {todo.title}
+                <Text style={styles.toggleButtonText}>
+                  {showCompleted ? "▼" : "▶"} Completed ({completed})
+                </Text>
+              </Button>
+
+              <Animated.View
+                style={{
+                  maxHeight: completedAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1000],
+                  }),
+                  opacity: completedAnimation,
+                  overflow: "hidden",
+                }}
+              >
+                {completedTodos.map((todo) => (
+                  <Card
+                    key={todo.id}
+                    style={[styles.todoCard, { opacity: 0.6 }]}
+                  >
+                    <Text
+                      style={[
+                        styles.todoText,
+                        { textDecorationLine: "line-through" },
+                      ]}
+                    >
+                      {todo.title}
                     </Text>
-                    <XStack gap="$1">
+                    <XStack style={styles.todoActions}>
                       <Button
                         size="$2"
-                        disabled={todo.priority === 1}
-                        onPress={() => {
-                          void handleMoveTodo(todo, "up");
-                        }}
+                        style={styles.actionButton}
+                        onPress={() => handleToggleCompleted(todo)}
                       >
-                        ↑
-                      </Button>
-                      <Button
-                        size="$2"
-                        disabled={index === activeTodos.length - 1}
-                        onPress={() => {
-                          void handleMoveTodo(todo, "down");
-                        }}
-                      >
-                        ↓
+                        <Text color="#ffffff" fontSize="$2">
+                          Undo
+                        </Text>
                       </Button>
                     </XStack>
-                  </XStack>
-                  <XStack marginTop="$1" gap="$1">
-                    <Button
-                      size="$2"
-                      theme="green"
-                      onPress={() => handleToggleCompleted(todo)}
-                    >
-                      Done
-                    </Button>
-                    <Button
-                      size="$2"
-                      theme="orange"
-                      onPress={() => handleArchiveTodo(todo)}
-                    >
-                      Archive
-                    </Button>
-                  </XStack>
-                </YStack>
-              </Card>
-            ))}
-            {activeTodos.length === 0 && (
-              <Text
-                color="$gray10"
-                textAlign="center"
-                fontSize="$3"
-                marginTop="$4"
-              >
-                No active todos
-              </Text>
-            )}
-          </ScrollView>
-        </YStack>
+                  </Card>
+                ))}
+              </Animated.View>
+            </>
+          )}
 
-        {/* Completed Column */}
-        <YStack
-          flex={1}
-          backgroundColor="$green2"
-          padding="$3"
-          borderRadius="$3"
-        >
-          <Text fontSize="$4" fontWeight="bold" marginBottom="$3">
-            Completed ({completed})
-          </Text>
-
-          <ScrollView flex={1}>
-            {completedTodos.map((todo) => (
-              <Card
-                key={todo.id}
-                padding="$2"
-                marginBottom="$2"
-                backgroundColor="$background"
-                opacity={0.7}
+          {/* Archived Todos Section */}
+          {archived > 0 && (
+            <>
+              <Button
+                style={styles.toggleButton}
+                onPress={toggleArchivedSection}
               >
-                <YStack>
-                  <Text
-                    fontSize="$3"
-                    textDecorationLine="line-through"
-                    marginBottom="$1"
+                <Text style={styles.toggleButtonText}>
+                  {showArchived ? "▼" : "▶"} Archived ({archived})
+                </Text>
+              </Button>
+
+              <Animated.View
+                style={{
+                  maxHeight: archivedAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1000],
+                  }),
+                  opacity: archivedAnimation,
+                  overflow: "hidden",
+                }}
+              >
+                {archivedTodos.map((todo) => (
+                  <Card
+                    key={todo.id}
+                    style={[styles.todoCard, { opacity: 0.4 }]}
                   >
-                    {todo.title}
-                  </Text>
-                  <XStack gap="$1">
-                    <Button
-                      size="$2"
-                      theme="yellow"
-                      onPress={() => handleToggleCompleted(todo)}
-                    >
-                      Undo
-                    </Button>
-                  </XStack>
-                </YStack>
-              </Card>
-            ))}
-            {completedTodos.length === 0 && (
-              <Text
-                color="$gray10"
-                textAlign="center"
-                fontSize="$3"
-                marginTop="$4"
-              >
-                No completed todos
-              </Text>
-            )}
-          </ScrollView>
-        </YStack>
-
-        {/* Archived Column */}
-        <YStack
-          flex={1}
-          backgroundColor="$gray4"
-          padding="$3"
-          borderRadius="$3"
-        >
-          <Text fontSize="$4" fontWeight="bold" marginBottom="$3">
-            Archived ({archived})
-          </Text>
-
-          <ScrollView flex={1}>
-            {archivedTodos.map((todo) => (
-              <Card
-                key={todo.id}
-                padding="$2"
-                marginBottom="$2"
-                backgroundColor="$background"
-                opacity={0.5}
-              >
-                <YStack>
-                  <Text fontSize="$3" color="$gray10" marginBottom="$1">
-                    {todo.title}
-                  </Text>
-                  <XStack gap="$1">
-                    <Button
-                      size="$2"
-                      theme="blue"
-                      onPress={() => handleToggleArchived(todo)}
-                    >
-                      Undo
-                    </Button>
-                  </XStack>
-                </YStack>
-              </Card>
-            ))}
-            {archivedTodos.length === 0 && (
-              <Text
-                color="$gray10"
-                textAlign="center"
-                fontSize="$3"
-                marginTop="$4"
-              >
-                No archived todos
-              </Text>
-            )}
-          </ScrollView>
-        </YStack>
-      </XStack>
-    </YStack>
+                    <Text style={[styles.todoText, { color: "#888888" }]}>
+                      {todo.title}
+                    </Text>
+                    <XStack style={styles.todoActions}>
+                      <Button
+                        size="$2"
+                        style={styles.actionButton}
+                        onPress={() => handleToggleArchived(todo)}
+                      >
+                        <Text color="#ffffff" fontSize="$2">
+                          Restore
+                        </Text>
+                      </Button>
+                    </XStack>
+                  </Card>
+                ))}
+              </Animated.View>
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  hamburger: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+  },
+  hamburgerText: {
+    fontSize: 24,
+    color: "#666666",
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 100,
+  },
+  inputContainer: {
+    marginBottom: 30,
+  },
+  input: {
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    color: "#ffffff",
+    fontSize: 16,
+    padding: 15,
+    borderRadius: 8,
+  },
+  todoCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    marginBottom: 8,
+    padding: 15,
+    borderRadius: 8,
+  },
+  todoText: {
+    color: "#ffffff",
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  todoActions: {
+    marginTop: 10,
+  },
+  actionButton: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    marginRight: 8,
+  },
+  toggleButton: {
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    padding: 10,
+    marginVertical: 8,
+    justifyContent: "flex-start",
+  },
+  toggleButtonText: {
+    color: "#888888",
+    fontSize: 14,
+  },
+});
