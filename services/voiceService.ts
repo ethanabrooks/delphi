@@ -1,8 +1,9 @@
 import {
-  Audio as ExpoAudio,
-  InterruptionModeAndroid,
-  InterruptionModeIOS,
-} from "expo-av";
+  AudioModule,
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+} from "expo-audio";
 import * as Speech from "expo-speech";
 import { Platform } from "react-native";
 
@@ -30,33 +31,33 @@ interface VoiceService {
 }
 
 class NativeVoiceService implements VoiceService {
-  private recording: ExpoAudio.Recording | null = null;
+  private recording: InstanceType<typeof AudioModule.AudioRecorder> | null =
+    null;
 
   isSupported() {
     return true;
   }
 
   async startRecording() {
-    const permission = await ExpoAudio.requestPermissionsAsync();
+    const permission = await requestRecordingPermissionsAsync();
 
     if (permission.status !== "granted") {
       throw new Error("Microphone permission was denied");
     }
 
-    await ExpoAudio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-      interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-      shouldDuckAndroid: true,
-      interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-      playThroughEarpieceAndroid: false,
+    await setAudioModeAsync({
+      allowsRecording: true,
+      playsInSilentMode: true,
+      interruptionMode: "doNotMix",
+      interruptionModeAndroid: "doNotMix",
+      shouldRouteThroughEarpiece: false,
     });
 
-    const recording = new ExpoAudio.Recording();
-    await recording.prepareToRecordAsync(
-      ExpoAudio.RecordingOptionsPresets.HIGH_QUALITY
+    const recording = new AudioModule.AudioRecorder(
+      RecordingPresets.HIGH_QUALITY
     );
-    await recording.startAsync();
+    await recording.prepareToRecordAsync();
+    recording.record();
     this.recording = recording;
   }
 
@@ -68,13 +69,13 @@ class NativeVoiceService implements VoiceService {
     const recording = this.recording;
 
     try {
-      await recording.stopAndUnloadAsync();
+      await recording.stop();
     } finally {
       this.recording = null;
     }
 
-    const status = await recording.getStatusAsync();
-    const uri = recording.getURI();
+    const status = recording.getStatus();
+    const uri = recording.uri;
 
     if (!uri) {
       throw new Error("Unable to retrieve the recorded audio file");
@@ -84,8 +85,7 @@ class NativeVoiceService implements VoiceService {
       kind: "native",
       uri,
       mimeType: "audio/m4a",
-      durationMillis:
-        "durationMillis" in status ? status.durationMillis : undefined,
+      durationMillis: status.durationMillis,
     };
   }
 
@@ -95,7 +95,7 @@ class NativeVoiceService implements VoiceService {
     }
 
     try {
-      await this.recording.stopAndUnloadAsync();
+      await this.recording.stop();
     } catch {
       // Ignore cancellation errors
     } finally {

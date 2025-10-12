@@ -48,7 +48,7 @@ describe("Priority Reordering Without Gaps", () => {
 
   const verifyNoGaps = (todos: Todo[]) => {
     const activeTodos = todos
-      .filter(t => t.status === "active")
+      .filter((t) => t.status === "active")
       .sort((a, b) => (a.priority as number) - (b.priority as number));
 
     for (let i = 0; i < activeTodos.length; i++) {
@@ -61,8 +61,8 @@ describe("Priority Reordering Without Gaps", () => {
   test("should reorder without gaps when moving down", async () => {
     // Create initial todos: a(1), b(2), c(3)
     const todoA = await createTodo("a", 1);
-    const todoB = await createTodo("b", 2);
-    const todoC = await createTodo("c", 3);
+    const _todoB = await createTodo("b", 2);
+    const _todoC = await createTodo("c", 3);
 
     // Move a down to position 2: should become b(1), a(2), c(3)
     await platformTodoService.updateTodo({
@@ -72,7 +72,7 @@ describe("Priority Reordering Without Gaps", () => {
 
     const allTodos = await platformTodoService.getAllTodos();
     const activeTodos = allTodos
-      .filter(t => t.status === "active")
+      .filter((t) => t.status === "active")
       .sort((a, b) => (a.priority as number) - (b.priority as number));
 
     // Verify no gaps exist
@@ -90,8 +90,8 @@ describe("Priority Reordering Without Gaps", () => {
 
   test("should reorder without gaps when moving up", async () => {
     // Create initial todos: a(1), b(2), c(3)
-    const todoA = await createTodo("a", 1);
-    const todoB = await createTodo("b", 2);
+    const _todoA = await createTodo("a", 1);
+    const _todoB = await createTodo("b", 2);
     const todoC = await createTodo("c", 3);
 
     // Move c up to position 1: should become c(1), a(2), b(3)
@@ -102,7 +102,7 @@ describe("Priority Reordering Without Gaps", () => {
 
     const allTodos = await platformTodoService.getAllTodos();
     const activeTodos = allTodos
-      .filter(t => t.status === "active")
+      .filter((t) => t.status === "active")
       .sort((a, b) => (a.priority as number) - (b.priority as number));
 
     // Verify no gaps exist
@@ -120,9 +120,9 @@ describe("Priority Reordering Without Gaps", () => {
 
   test("should reorder without gaps when moving to middle", async () => {
     // Create initial todos: a(1), b(2), c(3), d(4)
-    const todoA = await createTodo("a", 1);
-    const todoB = await createTodo("b", 2);
-    const todoC = await createTodo("c", 3);
+    const _todoA = await createTodo("a", 1);
+    const _todoB = await createTodo("b", 2);
+    const _todoC = await createTodo("c", 3);
     const todoD = await createTodo("d", 4);
 
     // Move d to position 2: should become a(1), d(2), b(3), c(4)
@@ -133,7 +133,7 @@ describe("Priority Reordering Without Gaps", () => {
 
     const allTodos = await platformTodoService.getAllTodos();
     const activeTodos = allTodos
-      .filter(t => t.status === "active")
+      .filter((t) => t.status === "active")
       .sort((a, b) => (a.priority as number) - (b.priority as number));
 
     // Verify no gaps exist
@@ -155,8 +155,8 @@ describe("Priority Reordering Without Gaps", () => {
     // This test documents the current broken behavior
     // Create initial todos: a(1), b(2), c(3)
     const todoA = await createTodo("a", 1);
-    const todoB = await createTodo("b", 2);
-    const todoC = await createTodo("c", 3);
+    const _todoB = await createTodo("b", 2);
+    const _todoC = await createTodo("c", 3);
 
     // Move a down to position 2
     await platformTodoService.updateTodo({
@@ -166,7 +166,7 @@ describe("Priority Reordering Without Gaps", () => {
 
     const allTodos = await platformTodoService.getAllTodos();
     const activeTodos = allTodos
-      .filter(t => t.status === "active")
+      .filter((t) => t.status === "active")
       .sort((a, b) => (a.priority as number) - (b.priority as number));
 
     // Current broken behavior creates: a(2), b(3), c(4) - gap at priority 1!
@@ -177,9 +177,12 @@ describe("Priority Reordering Without Gaps", () => {
     try {
       verifyNoGaps(allTodos);
       // If we reach here, gaps were fixed!
-    } catch (error) {
+    } catch (_error) {
       // Expected failure due to gaps - document what we actually get
-      console.log("Current broken behavior - priorities:", activeTodos.map(t => `${t.title}(${t.priority})`));
+      console.log(
+        "Current broken behavior - priorities:",
+        activeTodos.map((t) => `${t.title}(${t.priority})`)
+      );
 
       // Show the gap exists
       expect(activeTodos[0].priority).not.toBe(1); // There's a gap at 1
