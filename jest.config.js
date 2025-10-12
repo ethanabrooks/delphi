@@ -12,7 +12,7 @@ module.exports = {
     '^@db/(.*)$': '<rootDir>/db/$1',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(jest-)?react-native|@react-native|react-clone-referenced-element|@expo|expo(nent)?|@expo/.*|expo-.*|@unimodules/.*|unimodules|sentry-expo|native-base|@tamagui|tamagui)',
+    'node_modules/(?!(jest-)?react-native|@react-native|react-clone-referenced-element|@expo|expo(nent)?|@expo/.*|expo-.*|@unimodules/.*|unimodules|sentry-expo|native-base|@tamagui|tamagui|expo-router|@react-navigation)',
   ],
   reporters: ['default'],
   collectCoverageFrom: [

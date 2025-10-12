@@ -179,6 +179,24 @@ console.error = (...args: unknown[]) => {
   originalConsoleError.apply(console, typedArgs);
 };
 
+// Mock expo-router for navigation tests
+jest.mock("expo-router", () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    canGoBack: jest.fn().mockReturnValue(false),
+  }),
+  useLocalSearchParams: () => ({}),
+  usePathname: () => "/",
+  router: {
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    canGoBack: jest.fn().mockReturnValue(false),
+  },
+}));
+
 // Global TodoService mock with simple synchronous behavior
 jest.mock("./services/todoService", () => ({
   TodoService: {

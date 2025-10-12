@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { Button, Card, Input, ScrollView, Text, XStack, YStack } from "tamagui";
@@ -8,6 +9,7 @@ import { getNextHighestPriority } from "../utils/priorityUtils";
 // Removed all styled components - using Tamagui components directly
 
 export default function TodoList() {
+  const router = useRouter();
   const [newTodo, setNewTodo] = useState("");
   const [selectedTodoId, setSelectedTodoId] = useState<number | null>(null);
   const {
@@ -117,6 +119,9 @@ export default function TodoList() {
         alignItems="center"
         marginBottom="$4"
       >
+        <Button size="$3" theme="blue" onPress={() => router.push("/talk")}>
+          ← Talk
+        </Button>
         <Text
           fontSize="$6"
           fontWeight="bold"
