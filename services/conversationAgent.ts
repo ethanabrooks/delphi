@@ -45,7 +45,26 @@ export class ConversationAgent {
       const activeTodos = await platformTodoService.getActiveTodos();
       if (activeTodos.length > 0) {
         activeTodosContext = `\n\nCurrent Active Todos:
-${activeTodos.map((todo) => `- Priority ${todo.priority}: "${todo.title}"${todo.description ? ` (${todo.description})` : ""}${todo.due_date ? ` - Due: ${todo.due_date}` : ""}`).join("\n")}`;
+ priority |      title       |   description   | due_date
+----------+------------------+-----------------+-----------
+${activeTodos
+  .map((todo) => {
+    const priority = todo.priority.toString().padEnd(8);
+    const title = (
+      todo.title.length > 16 ? `${todo.title.substring(0, 13)}...` : todo.title
+    ).padEnd(16);
+    const description = (
+      todo.description
+        ? todo.description.length > 13
+          ? `${todo.description.substring(0, 10)}...`
+          : todo.description
+        : "NULL"
+    ).padEnd(15);
+    const dueDate = (todo.due_date?.substring(0, 10) ?? "NULL").padEnd(9);
+    return ` ${priority} | ${title} | ${description} | ${dueDate}`;
+  })
+  .join("\n")}
+(${activeTodos.length} rows)`;
       } else {
         activeTodosContext = "\n\nCurrent Active Todos: None";
       }
