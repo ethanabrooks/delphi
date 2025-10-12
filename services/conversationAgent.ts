@@ -1,6 +1,25 @@
 import OpenAIClient, { type ChatCompletionMessage } from "./openaiClient";
 import { platformTodoService } from "./platformTodoService";
+import { executeSqlFunction, SQL_TOOLS } from "./sqlTools";
 import { executeTodoFunction, TODO_TOOLS } from "./todoTools";
+
+// Combine todo tools and SQL tools
+const _ALL_TOOLS = [...TODO_TOOLS, ...SQL_TOOLS];
+
+// SQL tool names for routing
+const SQL_TOOL_NAMES = ["execute_sql_query"];
+
+// Unified tool execution function
+async function _executeToolFunction(
+  name: string,
+  args: string
+): Promise<string> {
+  if (SQL_TOOL_NAMES.includes(name)) {
+    return executeSqlFunction(name, args);
+  } else {
+    return executeTodoFunction(name, args);
+  }
+}
 
 export interface ConversationState {
   conversationId?: string;
