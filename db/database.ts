@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/expo-sqlite";
+import type { SQLiteDatabase } from "expo-sqlite";
 import * as schema from "./schema";
 
 type ExpoDatabaseHandle = {
@@ -36,7 +37,7 @@ const getDatabase = async () => {
     expoInstance = await openDatabaseAsync("todos.db");
     // For tests, we might not need a real drizzle instance, just something truthy
     try {
-      dbInstance = drizzle(expoInstance as any, { schema });
+      dbInstance = drizzle(expoInstance as SQLiteDatabase, { schema });
     } catch (_error) {
       // In test environment, create a mock drizzle instance
       dbInstance = {} as ReturnType<typeof drizzle>;

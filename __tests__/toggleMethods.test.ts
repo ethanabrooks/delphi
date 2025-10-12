@@ -51,6 +51,7 @@ describe("Toggle Methods", () => {
     expect(completed?.priority).toBe(1); // Priority preserved
 
     // Toggle back to active
+    expect(completed).not.toBeNull();
     const reactivated = await platformTodoService.toggleCompleted(
       completed?.id
     );
@@ -73,6 +74,7 @@ describe("Toggle Methods", () => {
     expect(archived?.priority).toBe(2); // Priority preserved
 
     // Toggle back to active
+    expect(archived).not.toBeNull();
     const reactivated = await platformTodoService.toggleArchived(archived?.id);
     expect(reactivated?.status).toBe("active");
     expect(reactivated?.priority).toBe(1); // Reactivated at priority 1
@@ -91,6 +93,7 @@ describe("Toggle Methods", () => {
     });
 
     // Try to toggle archived todo with toggleCompleted - should be unchanged
+    expect(archived).not.toBeNull();
     const result = await platformTodoService.toggleCompleted(archived?.id);
     expect(result?.status).toBe("archived"); // Should remain archived
   });
@@ -108,6 +111,7 @@ describe("Toggle Methods", () => {
     });
 
     // Try to toggle completed todo with toggleArchived - should be unchanged
+    expect(completed).not.toBeNull();
     const result = await platformTodoService.toggleArchived(completed?.id);
     expect(result?.status).toBe("completed"); // Should remain completed
   });
@@ -137,18 +141,22 @@ describe("Toggle Methods", () => {
     expect(archivedB?.status).toBe("archived");
 
     // Toggle both back to active using appropriate methods
+    expect(completedA).not.toBeNull();
     const uncompletedA = await platformTodoService.toggleCompleted(
       completedA?.id
     );
+    expect(archivedB).not.toBeNull();
     const unarchivedB = await platformTodoService.toggleArchived(archivedB?.id);
 
     expect(uncompletedA?.status).toBe("active");
     expect(unarchivedB?.status).toBe("active");
 
     // Toggle them again - they should go back to their original states
+    expect(uncompletedA).not.toBeNull();
     const retriggeredA = await platformTodoService.toggleCompleted(
       uncompletedA?.id
     );
+    expect(unarchivedB).not.toBeNull();
     const retriggeredB = await platformTodoService.toggleArchived(
       unarchivedB?.id
     );
