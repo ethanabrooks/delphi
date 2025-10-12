@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, isNotNull } from "drizzle-orm";
+import { and, asc, eq, gt, isNotNull, sql } from "drizzle-orm";
 import { db, mapTodoRowToTodo } from "../db/database";
 import { todos } from "../db/schema";
 import type {
@@ -84,30 +84,24 @@ export class TodoService {
       .where(eq(todos.id, todo.id));
   }
 
-  private static async shiftDownFromPriority(
-    fromPriority: number
-  ): Promise<void> {
+  private static async closeGapAtPriority(gapPriority: number): Promise<void> {
     const database = await db();
 
-    // Get all active todos with priority > fromPriority
-    const todosToShift = await database
-      .select()
-      .from(todos)
-      .where(and(eq(todos.status, "active"), gt(todos.priority, fromPriority)))
-      .orderBy(asc(todos.priority));
-
-    // Decrement each priority by 1
-    for (const todo of todosToShift) {
-      if (todo.priority !== null) {
-        await database
-          .update(todos)
-          .set({
-            priority: todo.priority - 1,
-            updated_at: new Date().toISOString(),
-          })
-          .where(eq(todos.id, todo.id));
-      }
-    }
+    // Close the gap by decrementing all priorities > gapPriority by 1
+    // This maintains dense ordering (no gaps) in a single SQL statement
+    await database
+      .update(todos)
+      .set({
+        priority: sql`priority - 1`,
+        updated_at: new Date().toISOString(),
+      })
+      .where(
+        and(
+          eq(todos.status, "active"),
+          gt(todos.priority, gapPriority),
+          isNotNull(todos.priority)
+        )
+      );
   }
 
   static async createTodo(input: CreateTodoInput): Promise<Todo> {
@@ -156,9 +150,9 @@ export class TodoService {
       if (updates.priority !== undefined && currentTodo.status === "active") {
         // Only handle priority for active todos
         if (updates.priority !== currentTodo.priority) {
-          // Shift down from old position if needed
+          // Close gap from old position if needed
           if (currentTodo.priority !== null) {
-            await TodoService.shiftDownFromPriority(currentTodo.priority + 1);
+            await TodoService.closeGapAtPriority(currentTodo.priority);
           }
           // Bump todos at new position
           await TodoService.bumpTodosFromPriority(updates.priority);
@@ -170,9 +164,9 @@ export class TodoService {
 
       if (updates.status && updates.status !== currentTodo.status) {
         if (currentTodo.status === "active" && updates.status !== "active") {
-          // Moving out of active - clear priority and shift down
+          // Moving out of active - clear priority and close gap
           if (currentTodo.priority !== null) {
-            await TodoService.shiftDownFromPriority(currentTodo.priority + 1);
+            await TodoService.closeGapAtPriority(currentTodo.priority);
           }
           newPriority = null;
         } else if (
@@ -216,10 +210,11 @@ export class TodoService {
     return result;
   }
 
-  // Optional: Housekeeping method to remove gaps in priority sequence
-  // Call this periodically or on-demand to ensure dense ordering (1,2,3,4...)
-  static async compactActivePriorities(): Promise<{
-    compacted: boolean;
+  // Repair tool: Resequence active priorities to ensure dense ordering (1,2,3,4...)
+  // Only call this for recovery after crashes or manual database edits
+  // Normal operations maintain dense ordering automatically
+  static async resequenceActivePriorities(): Promise<{
+    resequenced: boolean;
     gaps: number;
   }> {
     const database = await db();
@@ -233,7 +228,7 @@ export class TodoService {
         .orderBy(asc(todos.priority));
 
       if (activeTodos.length === 0) {
-        return { compacted: false, gaps: 0 };
+        return { resequenced: false, gaps: 0 };
       }
 
       // Check if compacting is needed by looking for gaps
@@ -248,7 +243,7 @@ export class TodoService {
       });
 
       if (!needsCompacting) {
-        return { compacted: false, gaps: 0 };
+        return { resequenced: false, gaps: 0 };
       }
 
       // Reassign priorities to create dense sequence (1,2,3,4...)
@@ -269,7 +264,7 @@ export class TodoService {
         }
       }
 
-      return { compacted: true, gaps };
+      return { resequenced: true, gaps };
     });
   }
 
@@ -286,9 +281,9 @@ export class TodoService {
       // Delete the todo
       const result = await tx.delete(todos).where(eq(todos.id, id));
 
-      // If it was an active todo, shift down priorities
+      // If it was an active todo, close the gap immediately
       if (todo.status === "active" && todo.priority !== null) {
-        await TodoService.shiftDownFromPriority(todo.priority);
+        await TodoService.closeGapAtPriority(todo.priority);
       }
 
       success = result.changes > 0;
