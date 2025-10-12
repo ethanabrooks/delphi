@@ -203,14 +203,26 @@ jest.mock("./services/todoService", () => ({
       return Promise.resolve(updated);
     }),
     deleteTodo: jest.fn().mockResolvedValue(true),
-    toggleTodo: jest.fn().mockImplementation((id) => {
+    toggleCompleted: jest.fn().mockImplementation((id) => {
       const todo = {
         id,
         title: "Mock Todo",
         description: null,
-        completed: true,
+        status: "completed",
         priority: 1,
-        category: null,
+        due_date: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      return Promise.resolve(todo);
+    }),
+    toggleArchived: jest.fn().mockImplementation((id) => {
+      const todo = {
+        id,
+        title: "Mock Todo",
+        description: null,
+        status: "archived",
+        priority: 1,
         due_date: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

@@ -175,15 +175,29 @@ export async function executeTodoFunction(
         return JSON.stringify(updatedTodo);
       }
 
-      case "toggle_todo": {
+      case "toggle_completed": {
         const toggleResult = todoIdentifierSchema.safeParse(parsedArgs);
         if (!toggleResult.success) {
           return JSON.stringify({
-            error: "Invalid parameters - priority and status required",
+            error: "Invalid parameters - id required",
             details: toggleResult.error.issues,
           });
         }
-        const toggledTodo = await platformTodoService.toggleTodo(
+        const toggledTodo = await platformTodoService.toggleCompleted(
+          toggleResult.data.id
+        );
+        return JSON.stringify(toggledTodo);
+      }
+
+      case "toggle_archived": {
+        const toggleResult = todoIdentifierSchema.safeParse(parsedArgs);
+        if (!toggleResult.success) {
+          return JSON.stringify({
+            error: "Invalid parameters - id required",
+            details: toggleResult.error.issues,
+          });
+        }
+        const toggledTodo = await platformTodoService.toggleArchived(
           toggleResult.data.id
         );
         return JSON.stringify(toggledTodo);

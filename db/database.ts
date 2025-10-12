@@ -36,7 +36,7 @@ const getDatabase = async () => {
     expoInstance = await openDatabaseAsync("todos.db");
     // For tests, we might not need a real drizzle instance, just something truthy
     try {
-      dbInstance = drizzle(expoInstance, { schema });
+      dbInstance = drizzle(expoInstance as any, { schema });
     } catch (_error) {
       // In test environment, create a mock drizzle instance
       dbInstance = {} as ReturnType<typeof drizzle>;
@@ -69,14 +69,13 @@ export const initializeDatabase = async () => {
   await databaseHandle.execAsync(`
     CREATE TABLE IF NOT EXISTS todos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      priority INTEGER,
+      priority INTEGER NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
       status TEXT DEFAULT 'active' NOT NULL,
       due_date TEXT,
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      CHECK(status != 'active' OR priority IS NOT NULL)
+      updated_at TEXT NOT NULL
     );
   `);
 
@@ -98,29 +97,18 @@ export const mapTodoRowToTodo = (
     throw new Error("Todo row must have an id");
   }
 
-  const baseTodo = {
+  if (row.priority === null || row.priority === undefined) {
+    throw new Error("Todo must have a priority");
+  }
+
+  return {
     id: row.id,
     title: row.title,
     description: row.description || undefined,
     due_date: row.due_date || undefined,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    priority: row.priority,
+    status: row.status,
   };
-
-  if (row.status === "active") {
-    if (row.priority === null || row.priority === undefined) {
-      throw new Error("Active todo must have a priority");
-    }
-    return {
-      ...baseTodo,
-      priority: row.priority,
-      status: "active" as const,
-    };
-  } else {
-    return {
-      ...baseTodo,
-      priority: null,
-      status: row.status as "completed" | "archived",
-    };
-  }
 };

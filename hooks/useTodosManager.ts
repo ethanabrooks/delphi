@@ -1,4 +1,5 @@
 import * as React from "react";
+import { initializeDatabase } from "../db/database";
 import {
   isWebPlatform,
   platformTodoService,
@@ -27,7 +28,8 @@ export interface UseTodosManagerResult {
   lastMutation: MutationType;
   addTodo: (input: CreateTodoInput) => Promise<void>;
   updateTodo: (input: UpdateTodoInput & { id: number }) => Promise<void>;
-  toggleTodo: (identifier: number, status: TodoStatus) => Promise<void>;
+  toggleCompleted: (id: number) => Promise<void>;
+  toggleArchived: (id: number) => Promise<void>;
   deleteTodo: (identifier: number, status: TodoStatus) => Promise<void>;
   refetch: () => Promise<void>;
 }
@@ -70,8 +72,6 @@ export default function useTodosManager(): UseTodosManagerResult {
     const initialize = async () => {
       try {
         if (!isWebPlatform) {
-          // Dynamically import database initialization only for native platforms
-          const { initializeDatabase } = await import("../db/database");
           await initializeDatabase();
         }
         await loadTodos();
@@ -123,14 +123,14 @@ export default function useTodosManager(): UseTodosManagerResult {
     []
   );
 
-  const toggleTodo = useCallback(async (id: number) => {
+  const toggleCompleted = useCallback(async (id: number) => {
     try {
       setLastMutation("toggle");
       setError(null);
-      const toggled = await platformTodoService.toggleTodo(id);
+      const toggled = await platformTodoService.toggleCompleted(id);
 
       if (!toggled) {
-        setError("Todo not found");
+        setError("Failed to toggle completed status");
         return;
       }
 
@@ -138,7 +138,28 @@ export default function useTodosManager(): UseTodosManagerResult {
         previous.map((todo) => (todo.id === toggled.id ? toggled : todo))
       );
     } catch (toggleError) {
-      setError(formatError("Failed to toggle todo", toggleError));
+      setError(formatError("Failed to toggle completed status", toggleError));
+    } finally {
+      setLastMutation(null);
+    }
+  }, []);
+
+  const toggleArchived = useCallback(async (id: number) => {
+    try {
+      setLastMutation("toggle");
+      setError(null);
+      const toggled = await platformTodoService.toggleArchived(id);
+
+      if (!toggled) {
+        setError("Failed to toggle archived status");
+        return;
+      }
+
+      setTodos((previous) =>
+        previous.map((todo) => (todo.id === toggled.id ? toggled : todo))
+      );
+    } catch (toggleError) {
+      setError(formatError("Failed to toggle archived status", toggleError));
     } finally {
       setLastMutation(null);
     }
@@ -186,7 +207,8 @@ export default function useTodosManager(): UseTodosManagerResult {
     lastMutation,
     addTodo,
     updateTodo,
-    toggleTodo,
+    toggleCompleted,
+    toggleArchived,
     deleteTodo,
     refetch,
   };

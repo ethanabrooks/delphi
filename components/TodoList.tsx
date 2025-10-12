@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { Button, Card, Input, ScrollView, Text, XStack, YStack } from "tamagui";
 import useTodosManager from "../hooks/useTodosManager";
@@ -17,7 +17,8 @@ export default function TodoList() {
     error,
     addTodo,
     updateTodo,
-    toggleTodo,
+    toggleCompleted,
+    toggleArchived,
     refetch,
   } = useTodosManager();
 
@@ -57,15 +58,18 @@ export default function TodoList() {
     setNewTodo("");
   }, [addTodo, newTodo, todos]);
 
-  const handleToggleTodo = useCallback(
+  const handleToggleCompleted = useCallback(
     async (todo: Todo) => {
-      const identifier =
-        todo.status === "active" && todo.priority !== null
-          ? todo.priority
-          : todo.id;
-      await toggleTodo(identifier, todo.status);
+      await toggleCompleted(todo.id);
     },
-    [toggleTodo]
+    [toggleCompleted]
+  );
+
+  const handleToggleArchived = useCallback(
+    async (todo: Todo) => {
+      await toggleArchived(todo.id);
+    },
+    [toggleArchived]
   );
 
   const handleMoveTodo = useCallback(
@@ -103,72 +107,6 @@ export default function TodoList() {
   );
 
   // Keyboard navigation support
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
-
-      const { activeTodos } = todosByStatus;
-      if (activeTodos.length === 0) return;
-
-      const selectedTodo = activeTodos.find(
-        (t) => t.priority === selectedTodoId
-      );
-      const currentIndex = selectedTodo
-        ? activeTodos.findIndex((t) => t.priority === selectedTodoId)
-        : 0;
-
-      switch (event.key) {
-        case "ArrowUp":
-          event.preventDefault();
-          if (selectedTodo && currentIndex > 0) {
-            void handleMoveTodo(selectedTodo, "up");
-          } else {
-            const prevIndex = Math.max(0, currentIndex - 1);
-            setSelectedTodoId(activeTodos[prevIndex]?.priority ?? null);
-          }
-          break;
-        case "ArrowDown":
-          event.preventDefault();
-          if (selectedTodo && currentIndex < activeTodos.length - 1) {
-            void handleMoveTodo(selectedTodo, "down");
-          } else {
-            const nextIndex = Math.min(
-              activeTodos.length - 1,
-              currentIndex + 1
-            );
-            setSelectedTodoId(activeTodos[nextIndex]?.priority ?? null);
-          }
-          break;
-        case "Enter":
-          event.preventDefault();
-          if (selectedTodo) {
-            void handleToggleTodo(selectedTodo);
-          }
-          break;
-        case "Delete":
-        case "Backspace":
-          event.preventDefault();
-          if (selectedTodo) {
-            void handleArchiveTodo(selectedTodo);
-          }
-          break;
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    handleArchiveTodo,
-    handleMoveTodo,
-    handleToggleTodo,
-    selectedTodoId,
-    todosByStatus,
-  ]);
 
   const { activeTodos, completedTodos, archivedTodos } = todosByStatus;
 
@@ -297,7 +235,7 @@ export default function TodoList() {
                     <Button
                       size="$2"
                       theme="green"
-                      onPress={() => handleToggleTodo(todo)}
+                      onPress={() => handleToggleCompleted(todo)}
                     >
                       Done
                     </Button>
@@ -357,7 +295,7 @@ export default function TodoList() {
                     <Button
                       size="$2"
                       theme="yellow"
-                      onPress={() => handleToggleTodo(todo)}
+                      onPress={() => handleToggleCompleted(todo)}
                     >
                       Undo
                     </Button>
@@ -406,7 +344,7 @@ export default function TodoList() {
                     <Button
                       size="$2"
                       theme="blue"
-                      onPress={() => handleToggleTodo(todo)}
+                      onPress={() => handleToggleArchived(todo)}
                     >
                       Undo
                     </Button>

@@ -7,17 +7,10 @@ export interface BaseTodo {
   updated_at: string;
 }
 
-export interface ActiveTodo extends BaseTodo {
-  priority: number; // Required for active todos
-  status: "active";
+export interface Todo extends BaseTodo {
+  priority: number; // All todos maintain their priority regardless of status
+  status: TodoStatus;
 }
-
-export interface NonActiveTodo extends BaseTodo {
-  priority: null; // Always null for non-active todos
-  status: "completed" | "archived";
-}
-
-export type Todo = ActiveTodo | NonActiveTodo;
 
 export type TodoStatus = "active" | "completed" | "archived";
 

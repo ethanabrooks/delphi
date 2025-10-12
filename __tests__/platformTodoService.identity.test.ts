@@ -15,7 +15,8 @@ const mockTodoServiceMocks = {
   getCompletedTodos: jest.fn<() => Promise<Todo[]>>(),
   getArchivedTodos: jest.fn<() => Promise<Todo[]>>(),
   clearAllTodos: jest.fn<() => Promise<void>>(),
-  toggleTodo: jest.fn<(id: number) => Promise<Todo | null>>(),
+  toggleCompleted: jest.fn<(id: number) => Promise<Todo | null>>(),
+  toggleArchived: jest.fn<(id: number) => Promise<Todo | null>>(),
   getTodoStats:
     jest.fn<
       () => Promise<{
@@ -39,7 +40,8 @@ jest.mock("../services/todoService", () => ({
     getCompletedTodos: () => mockTodoServiceMocks.getCompletedTodos(),
     getArchivedTodos: () => mockTodoServiceMocks.getArchivedTodos(),
     clearAllTodos: () => mockTodoServiceMocks.clearAllTodos(),
-    toggleTodo: (id: number) => mockTodoServiceMocks.toggleTodo(id),
+    toggleCompleted: (id: number) => mockTodoServiceMocks.toggleCompleted(id),
+    toggleArchived: (id: number) => mockTodoServiceMocks.toggleArchived(id),
     getTodoStats: () => mockTodoServiceMocks.getTodoStats(),
   },
 }));
@@ -52,7 +54,7 @@ const completedTodo = (overrides: Partial<Todo>): Todo => ({
   created_at: overrides.created_at ?? "2024-01-01T00:00:00.000Z",
   updated_at: overrides.updated_at ?? "2024-01-01T00:00:00.000Z",
   status: "completed",
-  priority: null,
+  priority: overrides.priority ?? 1, // Completed todos now maintain their priority
 });
 
 describe("platformTodoService identity-sensitive operations", () => {
@@ -63,7 +65,7 @@ describe("platformTodoService identity-sensitive operations", () => {
     });
   });
 
-  test("toggleTodo reactivates the matching completed todo by id", async () => {
+  test("toggleCompleted reactivates the matching completed todo by id", async () => {
     const todos: Todo[] = [
       completedTodo({ id: 10, title: "A" }),
       completedTodo({ id: 11, title: "B" }),
@@ -89,7 +91,7 @@ describe("platformTodoService identity-sensitive operations", () => {
             platformTodoService,
           } = require("../services/platformTodoService");
           platformTodoService
-            .toggleTodo(11, "completed")
+            .toggleCompleted(11)
             .then(() => resolve())
             .catch(reject);
         } catch (error) {

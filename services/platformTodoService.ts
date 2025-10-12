@@ -28,7 +28,10 @@ class WebTodoService {
     now: string,
     excludeTodo?: Todo
   ): Todo[] {
-    console.log(`[BUMP] Bumping active todos with priority >= ${fromPriority}, excluding:`, excludeTodo ? `id:${excludeTodo.id}` : "none");
+    console.log(
+      `[BUMP] Bumping active todos with priority >= ${fromPriority}, excluding:`,
+      excludeTodo ? `id:${excludeTodo.id}` : "none"
+    );
 
     const result = todos.map((todo) => {
       if (
@@ -36,7 +39,9 @@ class WebTodoService {
         todo.status === "active" &&
         todo.priority >= fromPriority
       ) {
-        console.log(`[BUMP] Bumping todo id:${todo.id} "${todo.title}" from priority ${todo.priority} to ${todo.priority + 1}`);
+        console.log(
+          `[BUMP] Bumping todo id:${todo.id} "${todo.title}" from priority ${todo.priority} to ${todo.priority + 1}`
+        );
         return { ...todo, priority: todo.priority + 1, updated_at: now };
       }
       return todo;
@@ -55,7 +60,9 @@ class WebTodoService {
     targetPriority: number,
     now: string
   ): Todo[] {
-    console.log(`[REORDER] Moving todo id:${todoToMove.id} "${todoToMove.title}" from priority ${todoToMove.priority} to ${targetPriority}`);
+    console.log(
+      `[REORDER] Moving todo id:${todoToMove.id} "${todoToMove.title}" from priority ${todoToMove.priority} to ${targetPriority}`
+    );
 
     const result = [...todos];
     const currentPriority = todoToMove.priority as number;
@@ -70,8 +77,10 @@ class WebTodoService {
       const nextPriority = movingPriority + step;
 
       // Find todos at current and next priorities
-      const movingTodoIndex = result.findIndex(t => t.id === todoToMove.id);
-      const swapTodoIndex = result.findIndex(t => t.status === "active" && t.priority === nextPriority);
+      const movingTodoIndex = result.findIndex((t) => t.id === todoToMove.id);
+      const swapTodoIndex = result.findIndex(
+        (t) => t.status === "active" && t.priority === nextPriority
+      );
 
       if (movingTodoIndex === -1) break;
       if (swapTodoIndex === -1) break; // No todo at next priority
@@ -80,15 +89,31 @@ class WebTodoService {
       const movingTodo = result[movingTodoIndex];
       const swapTodo = result[swapTodoIndex];
 
-      console.log(`[REORDER] Swapping: "${movingTodo.title}"(${movingTodo.priority}) ↔ "${swapTodo.title}"(${swapTodo.priority})`);
+      console.log(
+        `[REORDER] Swapping: "${movingTodo.title}"(${movingTodo.priority}) ↔ "${swapTodo.title}"(${swapTodo.priority})`
+      );
 
-      result[movingTodoIndex] = { ...movingTodo, priority: nextPriority, updated_at: now };
-      result[swapTodoIndex] = { ...swapTodo, priority: movingPriority, updated_at: now };
+      result[movingTodoIndex] = {
+        ...movingTodo,
+        priority: nextPriority,
+        updated_at: now,
+      };
+      result[swapTodoIndex] = {
+        ...swapTodo,
+        priority: movingPriority,
+        updated_at: now,
+      };
 
       movingPriority = nextPriority;
     }
 
-    console.log(`[REORDER] Final result:`, result.filter(t => t.status === "active").sort((a, b) => (a.priority as number) - (b.priority as number)).map(t => `id:${t.id} priority:${t.priority} title:"${t.title}"`));
+    console.log(
+      `[REORDER] Final result:`,
+      result
+        .filter((t) => t.status === "active")
+        .sort((a, b) => (a.priority as number) - (b.priority as number))
+        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
+    );
 
     return result;
   }
@@ -125,8 +150,15 @@ class WebTodoService {
     const todos = WebTodoService.read();
     const now = new Date().toISOString();
 
-    console.log(`[CREATE] Creating todo "${input.title}" at priority ${input.priority}`);
-    console.log(`[CREATE] Current active todos:`, todos.filter(t => t.status === "active").map(t => `id:${t.id} priority:${t.priority} title:"${t.title}"`));
+    console.log(
+      `[CREATE] Creating todo "${input.title}" at priority ${input.priority}`
+    );
+    console.log(
+      `[CREATE] Current active todos:`,
+      todos
+        .filter((t) => t.status === "active")
+        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
+    );
 
     // Bump existing todos with the same status and priority >= input.priority
     const bumped = WebTodoService.bumpActiveTodosFromPriority(
@@ -135,7 +167,12 @@ class WebTodoService {
       now
     );
 
-    console.log(`[CREATE] After bumping:`, bumped.filter(t => t.status === "active").map(t => `id:${t.id} priority:${t.priority} title:"${t.title}"`));
+    console.log(
+      `[CREATE] After bumping:`,
+      bumped
+        .filter((t) => t.status === "active")
+        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
+    );
 
     // Generate next autoincrement ID
     const maxId =
@@ -155,7 +192,12 @@ class WebTodoService {
 
     WebTodoService.write([newTodo, ...bumped]);
 
-    console.log(`[CREATE] Final result:`, [newTodo, ...bumped].filter(t => t.status === "active").map(t => `id:${t.id} priority:${t.priority} title:"${t.title}"`));
+    console.log(
+      `[CREATE] Final result:`,
+      [newTodo, ...bumped]
+        .filter((t) => t.status === "active")
+        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
+    );
 
     return newTodo;
   }
@@ -170,72 +212,103 @@ class WebTodoService {
       return null;
     }
 
-    console.log(`[UPDATE] Updating todo id:${input.id} "${currentTodo.title}" from priority:${currentTodo.priority} status:${currentTodo.status}`);
-    console.log(`[UPDATE] New values: priority:${input.priority} status:${input.status}`);
-    console.log(`[UPDATE] Current active todos:`, todos.filter(t => t.status === "active").map(t => `id:${t.id} priority:${t.priority} title:"${t.title}"`));
+    console.log(
+      `[UPDATE] Updating todo id:${input.id} "${currentTodo.title}" from priority:${currentTodo.priority} status:${currentTodo.status}`
+    );
+    console.log(
+      `[UPDATE] New values: priority:${input.priority} status:${input.status}`
+    );
+    console.log(
+      `[UPDATE] Current active todos:`,
+      todos
+        .filter((t) => t.status === "active")
+        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
+    );
     const index = todos.findIndex((todo) => todo.id === input.id);
     const newPriority = input.priority ?? currentTodo.priority;
     const newStatus = input.status ?? currentTodo.status;
 
-    // If becoming active with a specific priority, use proper reordering
+    // If becoming active with a specific priority, handle insertion/reordering
     if (
       newStatus === "active" &&
       newPriority !== null &&
       (newPriority !== currentTodo.priority || currentTodo.status !== "active")
     ) {
-      // Use gap-free reordering for any todo becoming active with priority
-      const updatedTodoForReorder: Todo = {
+      if (currentTodo.status === "active") {
+        // Already active todo - use reordering
+        const todoForReordering: Todo = {
+          id: currentTodo.id,
+          title: input.title ?? currentTodo.title,
+          description: input.description ?? currentTodo.description,
+          priority: currentTodo.priority,
+          status: "active",
+          due_date: input.due_date ?? currentTodo.due_date,
+          created_at: currentTodo.created_at,
+          updated_at: now,
+        };
+
+        const reordered = WebTodoService.reorderActiveTodos(
+          todos,
+          todoForReordering,
+          newPriority,
+          now
+        );
+
+        WebTodoService.write(reordered);
+        const finalUpdated = reordered.find((t) => t.id === input.id);
+        return finalUpdated || null;
+      } else {
+        // Reactivating a completed/archived todo - use bump logic
+        const updatedTodos = [...todos];
+
+        // Bump existing active todos at/above target priority
+        const bumpedTodos = WebTodoService.bumpActiveTodosFromPriority(
+          updatedTodos,
+          newPriority,
+          now
+        );
+        updatedTodos.splice(0, updatedTodos.length, ...bumpedTodos);
+
+        // Update current todo to active status with new priority
+        const index = updatedTodos.findIndex((t) => t.id === input.id);
+        if (index >= 0) {
+          updatedTodos[index] = {
+            id: currentTodo.id,
+            title: input.title ?? currentTodo.title,
+            description: input.description ?? currentTodo.description,
+            priority: newPriority,
+            status: "active",
+            due_date: input.due_date ?? currentTodo.due_date,
+            created_at: currentTodo.created_at,
+            updated_at: now,
+          };
+        }
+
+        WebTodoService.write(updatedTodos);
+        return updatedTodos.find((t) => t.id === input.id) || null;
+      }
+    } else {
+      // No priority conflict, simple update
+      const updated: Todo = {
         id: currentTodo.id,
         title: input.title ?? currentTodo.title,
         description: input.description ?? currentTodo.description,
-        priority: currentTodo.status === "active" ? currentTodo.priority : 1, // Use current priority if active, else use 1
-        status: "active",
+        priority: newPriority as number, // Preserve priority for all statuses
+        status: newStatus,
         due_date: input.due_date ?? currentTodo.due_date,
         created_at: currentTodo.created_at,
         updated_at: now,
       };
 
-      const reordered = WebTodoService.reorderActiveTodos(
-        todos,
-        updatedTodoForReorder,
-        newPriority,
-        now
-      );
-
-      WebTodoService.write(reordered);
-
-      // Find and return the updated todo
-      const finalUpdated = reordered.find(t => t.id === input.id);
-      return finalUpdated || null;
-    } else {
-      // No priority conflict, simple update - properly handle discriminated union
-      const updated: Todo =
-        newStatus === "active"
-          ? {
-              id: currentTodo.id,
-              title: input.title ?? currentTodo.title,
-              description: input.description ?? currentTodo.description,
-              priority: newPriority as number,
-              status: "active",
-              due_date: input.due_date ?? currentTodo.due_date,
-              created_at: currentTodo.created_at,
-              updated_at: now,
-            }
-          : {
-              id: currentTodo.id,
-              title: input.title ?? currentTodo.title,
-              description: input.description ?? currentTodo.description,
-              priority: null,
-              status: newStatus as "completed" | "archived",
-              due_date: input.due_date ?? currentTodo.due_date,
-              created_at: currentTodo.created_at,
-              updated_at: now,
-            };
-
       todos[index] = updated;
       WebTodoService.write(todos);
 
-      console.log(`[UPDATE] Simple update complete:`, todos.filter(t => t.status === "active").map(t => `id:${t.id} priority:${t.priority} title:"${t.title}"`));
+      console.log(
+        `[UPDATE] Simple update complete:`,
+        todos
+          .filter((t) => t.status === "active")
+          .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
+      );
 
       return updated;
     }
@@ -243,24 +316,36 @@ class WebTodoService {
 
   static async deleteTodo(id: number): Promise<boolean> {
     const todos = WebTodoService.read();
-    const todoToDelete = todos.find(t => t.id === id);
+    const todoToDelete = todos.find((t) => t.id === id);
 
     if (todoToDelete) {
-      console.log(`[DELETE] Deleting todo id:${id} "${todoToDelete.title}" priority:${todoToDelete.priority} status:${todoToDelete.status}`);
-      console.log(`[DELETE] Before deletion:`, todos.filter(t => t.status === "active").map(t => `id:${t.id} priority:${t.priority} title:"${t.title}"`));
+      console.log(
+        `[DELETE] Deleting todo id:${id} "${todoToDelete.title}" priority:${todoToDelete.priority} status:${todoToDelete.status}`
+      );
+      console.log(
+        `[DELETE] Before deletion:`,
+        todos
+          .filter((t) => t.status === "active")
+          .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
+      );
     }
 
     const filtered = todos.filter((todo) => todo.id !== id);
     WebTodoService.write(filtered);
 
     if (todoToDelete) {
-      console.log(`[DELETE] After deletion:`, filtered.filter(t => t.status === "active").map(t => `id:${t.id} priority:${t.priority} title:"${t.title}"`));
+      console.log(
+        `[DELETE] After deletion:`,
+        filtered
+          .filter((t) => t.status === "active")
+          .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
+      );
     }
 
     return filtered.length !== todos.length;
   }
 
-  static async toggleTodo(id: number): Promise<Todo | null> {
+  static async toggleCompleted(id: number): Promise<Todo | null> {
     const todos = WebTodoService.read();
     const todo = WebTodoService.findTodoById(todos, id);
 
@@ -268,11 +353,68 @@ class WebTodoService {
       return null;
     }
 
+    // Only allow toggling between active and completed
+    if (todo.status !== "active" && todo.status !== "completed") {
+      console.log(
+        `[TOGGLE_COMPLETED] Cannot toggle ${todo.status} todo - use toggleArchived for archived todos`
+      );
+      return todo; // Return unchanged
+    }
+
     const newStatus: TodoStatus =
       todo.status === "active" ? "completed" : "active";
 
-    console.log(`[TOGGLE] Toggling todo id:${id} "${todo.title}" from ${todo.status} to ${newStatus}`);
-    console.log(`[TOGGLE] Before toggle:`, todos.filter(t => t.status === "active").map(t => `id:${t.id} priority:${t.priority} title:"${t.title}"`));
+    console.log(
+      `[TOGGLE_COMPLETED] Toggling todo id:${id} "${todo.title}" from ${todo.status} to ${newStatus}`
+    );
+    console.log(
+      `[TOGGLE_COMPLETED] Before toggle:`,
+      todos
+        .filter((t) => t.status === "active")
+        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
+    );
+
+    // Create update payload with required ID
+    const updateInput: PlatformUpdatePayload = {
+      id: todo.id,
+      status: newStatus,
+    };
+
+    if (newStatus === "active") {
+      updateInput.priority = 1; // Insert at top
+    }
+
+    return WebTodoService.updateTodo(updateInput);
+  }
+
+  static async toggleArchived(id: number): Promise<Todo | null> {
+    const todos = WebTodoService.read();
+    const todo = WebTodoService.findTodoById(todos, id);
+
+    if (!todo) {
+      return null;
+    }
+
+    // Only allow toggling between active and archived
+    if (todo.status !== "active" && todo.status !== "archived") {
+      console.log(
+        `[TOGGLE_ARCHIVED] Cannot toggle ${todo.status} todo - use toggleCompleted for completed todos`
+      );
+      return todo; // Return unchanged
+    }
+
+    const newStatus: TodoStatus =
+      todo.status === "active" ? "archived" : "active";
+
+    console.log(
+      `[TOGGLE_ARCHIVED] Toggling todo id:${id} "${todo.title}" from ${todo.status} to ${newStatus}`
+    );
+    console.log(
+      `[TOGGLE_ARCHIVED] Before toggle:`,
+      todos
+        .filter((t) => t.status === "active")
+        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
+    );
 
     // Create update payload with required ID
     const updateInput: PlatformUpdatePayload = {
@@ -400,16 +542,44 @@ class PlatformTodoServiceWrapper {
     return service.deleteTodo(id);
   }
 
-  static async toggleTodo(id: number): Promise<Todo | null> {
+  static async toggleCompleted(id: number): Promise<Todo | null> {
     if (isWebPlatform) {
-      return WebTodoService.toggleTodo(id);
+      return WebTodoService.toggleCompleted(id);
     }
     const service = await getNativeService();
     // Use getAllTodos for compatibility with tests that mock it
     const allTodos = await service.getAllTodos();
     const todo = allTodos.find((t) => t.id === id);
     if (!todo) return null;
+
     const newStatus = todo.status === "active" ? "completed" : "active";
+    console.log(
+      `[TOGGLE_COMPLETED] Native: Toggling todo id:${id} "${todo.title}" from ${todo.status} to ${newStatus}`
+    );
+
+    const updateInput: UpdateTodoInput = { status: newStatus };
+    if (newStatus === "active") {
+      // When toggling back to active, we need to provide a priority
+      updateInput.priority = 1; // Insert at top
+    }
+    return service.updateTodo(id, updateInput);
+  }
+
+  static async toggleArchived(id: number): Promise<Todo | null> {
+    if (isWebPlatform) {
+      return WebTodoService.toggleArchived(id);
+    }
+    const service = await getNativeService();
+    // Use getAllTodos for compatibility with tests that mock it
+    const allTodos = await service.getAllTodos();
+    const todo = allTodos.find((t) => t.id === id);
+    if (!todo) return null;
+
+    const newStatus = todo.status === "active" ? "archived" : "active";
+    console.log(
+      `[TOGGLE_ARCHIVED] Native: Toggling todo id:${id} "${todo.title}" from ${todo.status} to ${newStatus}`
+    );
+
     const updateInput: UpdateTodoInput = { status: newStatus };
     if (newStatus === "active") {
       // When toggling back to active, we need to provide a priority

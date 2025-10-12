@@ -19,7 +19,7 @@ const baseTodo = (overrides: Partial<Todo>): Todo =>
 describe("getNextHighestPriority", () => {
   test("returns 1 when there are no active todos", () => {
     const todos: Todo[] = [
-      baseTodo({ id: 1, status: "completed", priority: null }),
+      baseTodo({ id: 1, status: "completed", priority: 2 }),
     ];
 
     expect(getNextHighestPriority(todos, "active")).toBe(1);
@@ -29,7 +29,7 @@ describe("getNextHighestPriority", () => {
     const todos: Todo[] = [
       baseTodo({ id: 1, status: "active", priority: 1 }),
       baseTodo({ id: 2, status: "active", priority: 2 }),
-      baseTodo({ id: 3, status: "completed", priority: null }),
+      baseTodo({ id: 3, status: "completed", priority: 5 }),
     ];
 
     expect(getNextHighestPriority(todos, "active")).toBe(3);
@@ -39,7 +39,7 @@ describe("getNextHighestPriority", () => {
     const todos: Todo[] = [
       baseTodo({ id: 1, status: "active", priority: 1 }),
       baseTodo({ id: 2, status: "active", priority: 4 }),
-      baseTodo({ id: 3, status: "archived", priority: null }),
+      baseTodo({ id: 3, status: "archived", priority: 3 }),
     ];
 
     expect(getNextHighestPriority(todos, "active")).toBe(5);

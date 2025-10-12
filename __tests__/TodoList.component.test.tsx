@@ -18,7 +18,8 @@ const createHookReturn = (): UseTodosManagerResult => ({
   lastMutation: null,
   addTodo: async () => {},
   updateTodo: async () => {},
-  toggleTodo: async () => {},
+  toggleCompleted: async () => {},
+  toggleArchived: async () => {},
   deleteTodo: async () => {},
   refetch: async () => {},
 });

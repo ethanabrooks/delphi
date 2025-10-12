@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import {
   index,
   integer,
@@ -11,7 +12,7 @@ export const todos = sqliteTable(
   "todos",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    priority: integer("priority"), // Nullable for non-active todos
+    priority: integer("priority").notNull(), // Required for all todos now
     title: text("title").notNull(),
     description: text("description"),
     status: text("status").$type<TodoStatus>().default("active").notNull(),
@@ -23,7 +24,7 @@ export const todos = sqliteTable(
     // Unique priority constraint only for active todos
     activePriorityIdx: uniqueIndex("active_priority_idx")
       .on(table.priority)
-      .where(table.status.eq("active")),
+      .where(eq(table.status, "active")),
     // General index for priority ordering
     priorityIdx: index("priority_idx").on(table.priority),
   })

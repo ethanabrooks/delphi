@@ -160,15 +160,13 @@ export class TodoService {
       }
 
       // Handle status changes
-      let newPriority: number | null = currentTodo.priority;
+      let newPriority: number = currentTodo.priority;
 
       if (updates.status && updates.status !== currentTodo.status) {
         if (currentTodo.status === "active" && updates.status !== "active") {
-          // Moving out of active - clear priority and close gap
-          if (currentTodo.priority !== null) {
-            await TodoService.closeGapAtPriority(currentTodo.priority);
-          }
-          newPriority = null;
+          // Moving out of active - preserve priority but close gap in active list
+          await TodoService.closeGapAtPriority(currentTodo.priority);
+          newPriority = currentTodo.priority; // Keep the original priority
         } else if (
           currentTodo.status !== "active" &&
           updates.status === "active"
@@ -282,7 +280,7 @@ export class TodoService {
       const result = await tx.delete(todos).where(eq(todos.id, id));
 
       // If it was an active todo, close the gap immediately
-      if (todo.status === "active" && todo.priority !== null) {
+      if (todo.status === "active") {
         await TodoService.closeGapAtPriority(todo.priority);
       }
 
