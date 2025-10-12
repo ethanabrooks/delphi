@@ -29,7 +29,15 @@ export interface CreateTodoInput {
   title: string;
   description?: string;
   due_date?: string;
-  // Priority is auto-assigned for new active todos
+  priority: number; // Required - specifies the exact priority position
+}
+
+export interface UpdateTodoInput {
+  title?: string;
+  description?: string;
+  due_date?: string;
+  status?: TodoStatus;
+  priority?: number; // Optional - if provided, bumps conflicting todos
 }
 
 export const STATUS_LABELS = {
