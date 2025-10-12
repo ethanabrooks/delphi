@@ -6,6 +6,7 @@ const createTodoSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
   due_date: z.string().optional(),
+  priority: z.number(),
 });
 
 const updateTodoSchema = z.object({
@@ -26,7 +27,8 @@ export const TODO_TOOLS: Tool[] = [
     type: "function",
     function: {
       name: "create_todo",
-      description: "Create a new todo item",
+      description:
+        "Create a new todo item. IMPORTANT: You MUST specify a priority to control the exact position of the todo in the list.",
       parameters: {
         type: "object",
         properties: {
@@ -39,8 +41,13 @@ export const TODO_TOOLS: Tool[] = [
             type: "string",
             description: "Optional due date in ISO format",
           },
+          priority: {
+            type: "number",
+            description:
+              "CRITICAL: The priority/position of the todo (lower numbers = higher priority). This parameter is mandatory and determines where the todo appears in the list. Use 1 for highest priority, 2 for second highest, etc. Existing todos at this priority and below will be automatically bumped down.",
+          },
         },
-        required: ["title"],
+        required: ["title", "priority"],
       },
     },
   },

@@ -44,8 +44,8 @@ describe("useTodosManager", () => {
   };
 
   test("loads todos on mount", async () => {
-    await platformTodoService.createTodo({ title: "First" });
-    await platformTodoService.createTodo({ title: "Second" });
+    await platformTodoService.createTodo({ title: "First", priority: 1 });
+    await platformTodoService.createTodo({ title: "Second", priority: 2 });
 
     const hookResult = renderHookComponent();
 
@@ -58,7 +58,7 @@ describe("useTodosManager", () => {
     await waitFor(() => expect(hookResult.current?.isLoading).toBe(false));
 
     await act(async () => {
-      await hookResult.current?.addTodo({ title: "New Todo" });
+      await hookResult.current?.addTodo({ title: "New Todo", priority: 1 });
     });
 
     expect(hookResult.current?.todos).toHaveLength(1);
@@ -66,7 +66,7 @@ describe("useTodosManager", () => {
   });
 
   test("toggles a todo", async () => {
-    await platformTodoService.createTodo({ title: "Toggle Me" });
+    await platformTodoService.createTodo({ title: "Toggle Me", priority: 1 });
 
     const hookResult = renderHookComponent();
     await waitFor(() => expect(hookResult.current?.isLoading).toBe(false));

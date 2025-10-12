@@ -7,7 +7,6 @@ import type {
   TodoStatus,
   UpdateTodoInput,
 } from "../types/todo";
-import { getNextHighestPriority } from "../utils/priorityUtils";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: service methods map directly to SQL helpers
 export class TodoService {
@@ -60,17 +59,11 @@ export class TodoService {
     const database = await db();
     const now = new Date().toISOString();
 
-    let targetPriority: number;
+    // Priority is now required, so use it directly
+    const targetPriority = input.priority;
 
-    if (input.priority !== undefined) {
-      targetPriority = input.priority;
-      // Check if priority already exists and bump if needed
-      await TodoService.bumpTodosFromPriority(targetPriority);
-    } else {
-      // Assign highest priority (lowest number)
-      const allTodos = await TodoService.getAllTodos();
-      targetPriority = getNextHighestPriority(allTodos);
-    }
+    // Check if priority already exists and bump if needed
+    await TodoService.bumpTodosFromPriority(targetPriority);
 
     const [result] = await database
       .insert(todos)

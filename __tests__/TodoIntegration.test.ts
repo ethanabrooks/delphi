@@ -26,6 +26,7 @@ describe("TodoService Integration Test", () => {
     const newTodo = await TodoService.createTodo({
       title: "Test Todo",
       description: "Test Description",
+      priority: 1,
     });
 
     expect(newTodo).toMatchObject({
@@ -48,6 +49,7 @@ describe("TodoService Integration Test", () => {
     const newTodo = await TodoService.createTodo({
       title: "Test Todo",
       description: "Test Description",
+      priority: 1,
     });
 
     // Update the todo
@@ -72,6 +74,7 @@ describe("TodoService Integration Test", () => {
     // Create a todo
     const newTodo = await TodoService.createTodo({
       title: "Test Todo",
+      priority: 1,
     });
 
     // Verify it exists
@@ -89,9 +92,12 @@ describe("TodoService Integration Test", () => {
 
   test("should filter todos by completion status", async () => {
     // Create some todos
-    await TodoService.createTodo({ title: "Todo 1" });
-    const todo2 = await TodoService.createTodo({ title: "Todo 2" });
-    await TodoService.createTodo({ title: "Todo 3" });
+    await TodoService.createTodo({ title: "Todo 1", priority: 1 });
+    const todo2 = await TodoService.createTodo({
+      title: "Todo 2",
+      priority: 2,
+    });
+    await TodoService.createTodo({ title: "Todo 3", priority: 3 });
 
     // Complete one todo
     await TodoService.toggleTodo(todo2.priority);
@@ -108,9 +114,18 @@ describe("TodoService Integration Test", () => {
 
   test("should filter todos by status", async () => {
     // Create todos with different statuses
-    const _todo1 = await TodoService.createTodo({ title: "Active Todo" });
-    const todo2 = await TodoService.createTodo({ title: "To Complete" });
-    const todo3 = await TodoService.createTodo({ title: "To Archive" });
+    const _todo1 = await TodoService.createTodo({
+      title: "Active Todo",
+      priority: 1,
+    });
+    const todo2 = await TodoService.createTodo({
+      title: "To Complete",
+      priority: 2,
+    });
+    const todo3 = await TodoService.createTodo({
+      title: "To Archive",
+      priority: 3,
+    });
 
     // Change statuses
     await TodoService.toggleTodo(todo2.priority); // Mark as completed
@@ -132,9 +147,18 @@ describe("TodoService Integration Test", () => {
 
   test("should get todo statistics", async () => {
     // Create test data
-    const _todo1 = await TodoService.createTodo({ title: "Todo 1" });
-    const todo2 = await TodoService.createTodo({ title: "Todo 2" });
-    const todo3 = await TodoService.createTodo({ title: "Todo 3" });
+    const _todo1 = await TodoService.createTodo({
+      title: "Todo 1",
+      priority: 1,
+    });
+    const todo2 = await TodoService.createTodo({
+      title: "Todo 2",
+      priority: 2,
+    });
+    const todo3 = await TodoService.createTodo({
+      title: "Todo 3",
+      priority: 3,
+    });
 
     // Change statuses
     await TodoService.toggleTodo(todo2.priority); // Mark as completed

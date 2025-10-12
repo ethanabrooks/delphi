@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import { Button, Card, Input, ScrollView, Text, XStack, YStack } from "tamagui";
 import useTodosManager from "../hooks/useTodosManager";
 import { STATUS_LABELS } from "../types/todo";
+import { getNextHighestPriority } from "../utils/priorityUtils";
 
 // Removed all styled components - using Tamagui components directly
 
@@ -18,8 +19,12 @@ export default function TodoList() {
       return;
     }
 
+    // Calculate the next highest priority (lowest number available)
+    const priority = getNextHighestPriority(todos);
+
     await addTodo({
       title: newTodo.trim(),
+      priority,
     });
 
     setNewTodo("");

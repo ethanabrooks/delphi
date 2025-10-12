@@ -14,7 +14,7 @@ export interface CreateTodoInput {
   title: string;
   description?: string;
   due_date?: string;
-  priority?: number; // Optional, will be assigned if not provided
+  priority: number; // Required - specifies the exact position/priority of the todo
 }
 
 export interface UpdateTodoInput {
