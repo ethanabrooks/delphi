@@ -21,6 +21,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
   const [isSupported, setIsSupported] = useState(() =>
     voiceService.isSupported()
   );
+  const [amplitudeData, setAmplitudeData] = useState<number[]>([]);
 
   const openAiClient = useMemo(() => {
     if (!apiKey) {
@@ -41,8 +42,16 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
   useEffect(() => {
     setIsSupported(voiceService.isSupported());
 
+    // Set up amplitude data callback for voice-responsive animation
+    if (voiceService.onAmplitudeData) {
+      voiceService.onAmplitudeData(setAmplitudeData);
+    }
+
     return () => {
       void voiceService.cancelRecording();
+      if (voiceService.offAmplitudeData) {
+        voiceService.offAmplitudeData();
+      }
     };
   }, []);
 
@@ -180,7 +189,11 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         {(isRecording || isProcessing) && (
           <View style={styles.indicator}>
             {isRecording ? (
-              <SoundWaveAnimation isActive={true} color="#ffffff" />
+              <SoundWaveAnimation
+                isActive={true}
+                amplitudeData={amplitudeData}
+                color="#ffffff"
+              />
             ) : (
               <Text style={styles.indicatorText}>Processing...</Text>
             )}

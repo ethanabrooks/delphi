@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Animated, StyleSheet, View } from "react-native";
 
 interface SoundWaveAnimationProps {
   isActive: boolean;
+  amplitudeData?: number[];
   color?: string;
 }
 
 export default function SoundWaveAnimation({
   isActive,
+  amplitudeData,
   color = "white",
 }: SoundWaveAnimationProps) {
   const bar1Height = useRef(new Animated.Value(4)).current;
@@ -16,83 +18,77 @@ export default function SoundWaveAnimation({
   const bar4Height = useRef(new Animated.Value(4)).current;
   const bar5Height = useRef(new Animated.Value(4)).current;
 
-  const createWaveAnimation = useCallback(
-    (animatedValue: Animated.Value, maxHeight: number, delay: number) => {
-      return Animated.loop(
-        Animated.sequence([
-          Animated.timing(animatedValue, {
-            toValue: maxHeight,
-            duration: 600,
-            useNativeDriver: false,
-            delay,
-          }),
-          Animated.timing(animatedValue, {
-            toValue: 4,
-            duration: 600,
-            useNativeDriver: false,
-          }),
-        ])
-      );
-    },
-    []
+  const barHeights = useMemo(
+    () => [bar1Height, bar2Height, bar3Height, bar4Height, bar5Height],
+    [bar1Height, bar2Height, bar3Height, bar4Height, bar5Height]
   );
 
+  // Update bar heights based on real-time amplitude data
   useEffect(() => {
-    if (isActive) {
-      const animations = [
-        createWaveAnimation(bar1Height, 24, 0),
-        createWaveAnimation(bar2Height, 32, 100),
-        createWaveAnimation(bar3Height, 20, 200),
-        createWaveAnimation(bar4Height, 28, 300),
-        createWaveAnimation(bar5Height, 16, 400),
-      ];
+    if (isActive && amplitudeData && amplitudeData.length >= 5) {
+      // Use real amplitude data for responsive animation
+      const minHeight = 4;
+      const maxHeight = 42; // A little taller for even better visibility
 
-      for (const animation of animations) {
+      const heights = amplitudeData.map(
+        (amplitude) => minHeight + (maxHeight - minHeight) * amplitude
+      );
+
+      // Smooth but responsive animation
+      Animated.parallel(
+        barHeights.map((barHeight, index) =>
+          Animated.timing(barHeight, {
+            toValue: heights[index],
+            duration: 50, // A little faster for more responsiveness
+            useNativeDriver: false,
+          })
+        )
+      ).start();
+    } else if (isActive) {
+      // Fallback to static animation when no amplitude data is available
+      const staticHeights = [32, 42, 28, 36, 24]; // A little taller static heights
+      const delays = [0, 100, 200, 300, 400];
+
+      const staticAnimations = barHeights.map((barHeight, index) =>
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(barHeight, {
+              toValue: staticHeights[index],
+              duration: 600,
+              useNativeDriver: false,
+              delay: delays[index],
+            }),
+            Animated.timing(barHeight, {
+              toValue: 4,
+              duration: 600,
+              useNativeDriver: false,
+            }),
+          ])
+        )
+      );
+
+      for (const animation of staticAnimations) {
         animation.start();
       }
 
       return () => {
-        for (const animation of animations) {
+        for (const animation of staticAnimations) {
           animation.stop();
         }
       };
     } else {
       // Reset to inactive state
-      Animated.timing(bar1Height, {
-        toValue: 4,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-      Animated.timing(bar2Height, {
-        toValue: 4,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-      Animated.timing(bar3Height, {
-        toValue: 4,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-      Animated.timing(bar4Height, {
-        toValue: 4,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-      Animated.timing(bar5Height, {
-        toValue: 4,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
+      Animated.parallel(
+        barHeights.map((barHeight) =>
+          Animated.timing(barHeight, {
+            toValue: 4,
+            duration: 200,
+            useNativeDriver: false,
+          })
+        )
+      ).start();
     }
-  }, [
-    isActive,
-    bar1Height,
-    bar2Height,
-    bar3Height,
-    bar4Height,
-    bar5Height,
-    createWaveAnimation,
-  ]);
+  }, [isActive, amplitudeData, barHeights]);
 
   return (
     <View style={styles.container}>
@@ -121,10 +117,10 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "center",
     gap: 6,
-    height: 32,
+    height: 44, // A little taller to accommodate larger bars
   },
   bar: {
-    width: 3,
-    borderRadius: 1.5,
+    width: 4, // Slightly wider bars
+    borderRadius: 2,
   },
 });
