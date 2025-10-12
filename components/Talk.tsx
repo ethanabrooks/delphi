@@ -5,6 +5,7 @@ import { Text, View } from "tamagui";
 import { ConversationAgent } from "../services/conversationAgent";
 import OpenAIClient from "../services/openaiClient";
 import voiceService, { type VoiceRecording } from "../services/voiceService";
+import SoundWaveAnimation from "./SoundWaveAnimation";
 
 interface TalkProps {
   apiKey?: string;
@@ -180,9 +181,11 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         {/* Recording indicator */}
         {(isRecording || isProcessing) && (
           <View style={styles.indicator}>
-            <Text style={styles.indicatorText}>
-              {isRecording ? "🔴 Recording..." : "Processing..."}
-            </Text>
+            {isRecording ? (
+              <SoundWaveAnimation isActive={true} color="#ffffff" />
+            ) : (
+              <Text style={styles.indicatorText}>Processing...</Text>
+            )}
           </View>
         )}
 
