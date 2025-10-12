@@ -42,7 +42,7 @@ class WebTodoService {
     const todos = WebTodoService.read();
     const now = new Date().toISOString();
     const newTodo: Todo = {
-      id: Date.now(),
+      priority: Date.now(),
       title: input.title,
       description: input.description,
       status: "active",
@@ -57,7 +57,7 @@ class WebTodoService {
 
   static async updateTodo(input: UpdateTodoInput): Promise<Todo | null> {
     const todos = WebTodoService.read();
-    const index = todos.findIndex((todo) => todo.id === input.id);
+    const index = todos.findIndex((todo) => todo.priority === input.priority);
 
     if (index === -1) {
       return null;
@@ -74,16 +74,16 @@ class WebTodoService {
     return updated;
   }
 
-  static async deleteTodo(id: number): Promise<boolean> {
+  static async deleteTodo(priority: number): Promise<boolean> {
     const todos = WebTodoService.read();
-    const filtered = todos.filter((todo) => todo.id !== id);
+    const filtered = todos.filter((todo) => todo.priority !== priority);
     WebTodoService.write(filtered);
     return filtered.length !== todos.length;
   }
 
-  static async toggleTodo(id: number): Promise<Todo | null> {
+  static async toggleTodo(priority: number): Promise<Todo | null> {
     const todos = WebTodoService.read();
-    const todo = todos.find((item) => item.id === id);
+    const todo = todos.find((item) => item.priority === priority);
 
     if (!todo) {
       return null;
@@ -91,16 +91,16 @@ class WebTodoService {
 
     const newStatus: TodoStatus =
       todo.status === "completed" ? "active" : "completed";
-    return WebTodoService.updateTodo({ id, status: newStatus });
+    return WebTodoService.updateTodo({ priority, status: newStatus });
   }
 
   static async clearAllTodos(): Promise<void> {
     WebTodoService.write([]);
   }
 
-  static async getTodoById(id: number): Promise<Todo | null> {
+  static async getTodoByPriority(priority: number): Promise<Todo | null> {
     const todos = WebTodoService.read();
-    return todos.find((todo) => todo.id === id) || null;
+    return todos.find((todo) => todo.priority === priority) || null;
   }
 
   static async getActiveTodos(): Promise<Todo[]> {
@@ -175,20 +175,20 @@ class PlatformTodoServiceWrapper {
     return service.updateTodo(input);
   }
 
-  static async deleteTodo(id: number): Promise<boolean> {
+  static async deleteTodo(priority: number): Promise<boolean> {
     if (isWebPlatform) {
-      return WebTodoService.deleteTodo(id);
+      return WebTodoService.deleteTodo(priority);
     }
     const service = await getNativeService();
-    return service.deleteTodo(id);
+    return service.deleteTodo(priority);
   }
 
-  static async toggleTodo(id: number): Promise<Todo | null> {
+  static async toggleTodo(priority: number): Promise<Todo | null> {
     if (isWebPlatform) {
-      return WebTodoService.toggleTodo(id);
+      return WebTodoService.toggleTodo(priority);
     }
     const service = await getNativeService();
-    return service.toggleTodo(id);
+    return service.toggleTodo(priority);
   }
 
   static async clearAllTodos(): Promise<void> {
@@ -199,12 +199,12 @@ class PlatformTodoServiceWrapper {
     return service.clearAllTodos();
   }
 
-  static async getTodoById(id: number): Promise<Todo | null> {
+  static async getTodoByPriority(priority: number): Promise<Todo | null> {
     if (isWebPlatform) {
-      return WebTodoService.getTodoById(id);
+      return WebTodoService.getTodoByPriority(priority);
     }
     const service = await getNativeService();
-    return service.getTodoById(id);
+    return service.getTodoByPriority(priority);
   }
 
   static async getActiveTodos(): Promise<Todo[]> {

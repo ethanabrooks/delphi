@@ -25,18 +25,18 @@ export default function TodoList() {
     setNewTodo("");
   };
 
-  const handleToggleTodo = async (todoId: number) => {
-    await toggleTodo(todoId);
+  const handleToggleTodo = async (todoPriority: number) => {
+    await toggleTodo(todoPriority);
   };
 
-  const handleDeleteTodo = (todoId: number, title: string) => {
+  const handleDeleteTodo = (todoPriority: number, title: string) => {
     Alert.alert("Delete Todo", `Are you sure you want to delete "${title}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          await deleteTodo(todoId);
+          await deleteTodo(todoPriority);
         },
       },
     ]);
@@ -119,7 +119,7 @@ export default function TodoList() {
         ) : (
           todos.map((todo) => (
             <Card
-              key={todo.id}
+              key={todo.priority}
               backgroundColor="$background"
               padding="$4"
               marginBottom="$3"
@@ -129,7 +129,7 @@ export default function TodoList() {
               <XStack justifyContent="space-between" alignItems="flex-start">
                 <YStack flex={1} marginRight="$3">
                   <Button
-                    onPress={() => handleToggleTodo(todo.id)}
+                    onPress={() => handleToggleTodo(todo.priority)}
                     unstyled
                     pressStyle={{ opacity: 0.7 }}
                   >
@@ -172,7 +172,7 @@ export default function TodoList() {
 
                 <XStack>
                   <Button
-                    onPress={() => handleToggleTodo(todo.id)}
+                    onPress={() => handleToggleTodo(todo.priority)}
                     theme={todo.status === "completed" ? "yellow" : "green"}
                     size="$3"
                     marginRight="$2"
@@ -181,7 +181,7 @@ export default function TodoList() {
                   </Button>
 
                   <Button
-                    onPress={() => handleDeleteTodo(todo.id, todo.title)}
+                    onPress={() => handleDeleteTodo(todo.priority, todo.title)}
                     theme="red"
                     size="$3"
                   >

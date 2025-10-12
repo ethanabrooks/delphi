@@ -32,7 +32,7 @@ export const initializeDatabase = async () => {
 
   await expoInstance.execAsync(`
     CREATE TABLE IF NOT EXISTS todos (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      priority INTEGER PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT,
       status TEXT DEFAULT 'active' NOT NULL,
@@ -49,7 +49,7 @@ export const initializeDatabase = async () => {
 export const mapTodoRowToTodo = (
   row: schema.TodoRow
 ): import("../types/todo").Todo => ({
-  id: row.id,
+  priority: row.priority,
   title: row.title,
   description: row.description || undefined,
   status: row.status,

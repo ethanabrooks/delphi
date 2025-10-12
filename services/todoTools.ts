@@ -10,15 +10,15 @@ const createTodoSchema = z.object({
 });
 
 const updateTodoSchema = z.object({
-  id: z.number(),
+  priority: z.number(),
   title: z.string().optional(),
   description: z.string().optional(),
   status: z.enum(["active", "completed", "archived"]).optional(),
   due_date: z.string().optional(),
 });
 
-const todoIdSchema = z.object({
-  id: z.number(),
+const todoPrioritySchema = z.object({
+  priority: z.number(),
 });
 
 const statusSchema = z.object({
@@ -40,14 +40,17 @@ export const TODO_TOOLS: Tool[] = [
   {
     type: "function",
     function: {
-      name: "get_todo_by_id",
-      description: "Get a specific todo by its ID",
+      name: "get_todo_by_priority",
+      description: "Get a specific todo by its priority",
       parameters: {
         type: "object",
         properties: {
-          id: { type: "number", description: "The ID of the todo to retrieve" },
+          priority: {
+            type: "number",
+            description: "The priority of the todo to retrieve",
+          },
         },
-        required: ["id"],
+        required: ["priority"],
       },
     },
   },
@@ -81,7 +84,10 @@ export const TODO_TOOLS: Tool[] = [
       parameters: {
         type: "object",
         properties: {
-          id: { type: "number", description: "The ID of the todo to update" },
+          priority: {
+            type: "number",
+            description: "The priority of the todo to update",
+          },
           title: { type: "string", description: "New title for the todo" },
           description: {
             type: "string",
@@ -98,7 +104,7 @@ export const TODO_TOOLS: Tool[] = [
             description: "New due date in ISO format",
           },
         },
-        required: ["id"],
+        required: ["priority"],
       },
     },
   },
@@ -110,9 +116,12 @@ export const TODO_TOOLS: Tool[] = [
       parameters: {
         type: "object",
         properties: {
-          id: { type: "number", description: "The ID of the todo to toggle" },
+          priority: {
+            type: "number",
+            description: "The priority of the todo to toggle",
+          },
         },
-        required: ["id"],
+        required: ["priority"],
       },
     },
   },
@@ -200,12 +209,14 @@ export async function executeTodoFunction(
         return JSON.stringify(allTodos);
       }
 
-      case "get_todo_by_id": {
-        const idResult = todoIdSchema.safeParse(parsedArgs);
-        if (!idResult.success) {
-          return JSON.stringify({ error: "Invalid ID parameter" });
+      case "get_todo_by_priority": {
+        const priorityResult = todoPrioritySchema.safeParse(parsedArgs);
+        if (!priorityResult.success) {
+          return JSON.stringify({ error: "Invalid priority parameter" });
         }
-        const todo = await platformTodoService.getTodoById(idResult.data.id);
+        const todo = await platformTodoService.getTodoByPriority(
+          priorityResult.data.priority
+        );
         return JSON.stringify(todo);
       }
 
@@ -236,12 +247,12 @@ export async function executeTodoFunction(
       }
 
       case "toggle_todo": {
-        const toggleResult = todoIdSchema.safeParse(parsedArgs);
+        const toggleResult = todoPrioritySchema.safeParse(parsedArgs);
         if (!toggleResult.success) {
-          return JSON.stringify({ error: "Invalid ID parameter" });
+          return JSON.stringify({ error: "Invalid priority parameter" });
         }
         const toggledTodo = await platformTodoService.toggleTodo(
-          toggleResult.data.id
+          toggleResult.data.priority
         );
         return JSON.stringify(toggledTodo);
       }

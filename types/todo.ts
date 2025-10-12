@@ -1,5 +1,5 @@
 export interface Todo {
-  id: number;
+  priority: number;
   title: string;
   description?: string;
   status: TodoStatus;
@@ -14,10 +14,11 @@ export interface CreateTodoInput {
   title: string;
   description?: string;
   due_date?: string;
+  priority?: number; // Optional, will be assigned if not provided
 }
 
 export interface UpdateTodoInput {
-  id: number;
+  priority: number;
   title?: string;
   description?: string;
   status?: TodoStatus;

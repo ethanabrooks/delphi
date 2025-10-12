@@ -22,8 +22,8 @@ export interface UseTodosManagerResult {
   lastMutation: MutationType;
   addTodo: (input: CreateTodoInput) => Promise<void>;
   updateTodo: (input: UpdateTodoInput) => Promise<void>;
-  toggleTodo: (id: number) => Promise<void>;
-  deleteTodo: (id: number) => Promise<void>;
+  toggleTodo: (priority: number) => Promise<void>;
+  deleteTodo: (priority: number) => Promise<void>;
   refetch: () => Promise<void>;
 }
 
@@ -94,7 +94,9 @@ export default function useTodosManager(): UseTodosManagerResult {
       }
 
       setTodos((previous) =>
-        previous.map((todo) => (todo.id === input.id ? updated : todo))
+        previous.map((todo) =>
+          todo.priority === input.priority ? updated : todo
+        )
       );
     } catch (updateError) {
       setError(formatError("Failed to update todo", updateError));
@@ -103,11 +105,11 @@ export default function useTodosManager(): UseTodosManagerResult {
     }
   }, []);
 
-  const toggleTodo = useCallback(async (id: number) => {
+  const toggleTodo = useCallback(async (priority: number) => {
     try {
       setLastMutation("toggle");
       setError(null);
-      const toggled = await platformTodoService.toggleTodo(id);
+      const toggled = await platformTodoService.toggleTodo(priority);
 
       if (!toggled) {
         setError("Todo not found");
@@ -115,7 +117,7 @@ export default function useTodosManager(): UseTodosManagerResult {
       }
 
       setTodos((previous) =>
-        previous.map((todo) => (todo.id === id ? toggled : todo))
+        previous.map((todo) => (todo.priority === priority ? toggled : todo))
       );
     } catch (toggleError) {
       setError(formatError("Failed to toggle todo", toggleError));
@@ -124,18 +126,20 @@ export default function useTodosManager(): UseTodosManagerResult {
     }
   }, []);
 
-  const deleteTodo = useCallback(async (id: number) => {
+  const deleteTodo = useCallback(async (priority: number) => {
     try {
       setLastMutation("delete");
       setError(null);
-      const success = await platformTodoService.deleteTodo(id);
+      const success = await platformTodoService.deleteTodo(priority);
 
       if (!success) {
         setError("Todo not found");
         return;
       }
 
-      setTodos((previous) => previous.filter((todo) => todo.id !== id));
+      setTodos((previous) =>
+        previous.filter((todo) => todo.priority !== priority)
+      );
     } catch (deleteError) {
       setError(formatError("Failed to delete todo", deleteError));
     } finally {

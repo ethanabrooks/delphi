@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { asc, eq, gte } from "drizzle-orm";
 import { db, mapTodoRowToTodo } from "../db/database";
 import { todos } from "../db/schema";
 import type {
@@ -15,29 +15,69 @@ export class TodoService {
     const rows = await database
       .select()
       .from(todos)
-      .orderBy(desc(todos.created_at));
+      .orderBy(asc(todos.priority));
 
     return rows.map(mapTodoRowToTodo);
   }
 
-  static async getTodoById(id: number): Promise<Todo | null> {
+  static async getTodoByPriority(priority: number): Promise<Todo | null> {
     const database = await db();
     const rows = await database
       .select()
       .from(todos)
-      .where(eq(todos.id, id))
+      .where(eq(todos.priority, priority))
       .limit(1);
 
     return rows.length > 0 ? mapTodoRowToTodo(rows[0]) : null;
+  }
+
+  private static async bumpTodosFromPriority(
+    fromPriority: number
+  ): Promise<void> {
+    const database = await db();
+
+    // Get all todos with priority >= fromPriority, ordered by priority
+    const todosToUpdate = await database
+      .select()
+      .from(todos)
+      .where(gte(todos.priority, fromPriority))
+      .orderBy(asc(todos.priority));
+
+    // Update each todo's priority by incrementing it by 1
+    for (const todo of todosToUpdate) {
+      await database
+        .update(todos)
+        .set({
+          priority: todo.priority + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .where(eq(todos.priority, todo.priority));
+    }
   }
 
   static async createTodo(input: CreateTodoInput): Promise<Todo> {
     const database = await db();
     const now = new Date().toISOString();
 
+    let targetPriority: number;
+
+    if (input.priority !== undefined) {
+      targetPriority = input.priority;
+      // Check if priority already exists and bump if needed
+      await TodoService.bumpTodosFromPriority(targetPriority);
+    } else {
+      // Assign highest priority (lowest number) - get current min and subtract 1
+      const allTodos = await TodoService.getAllTodos();
+      targetPriority =
+        allTodos.length > 0
+          ? Math.min(...allTodos.map((t) => t.priority)) - 1
+          : 1;
+    }
+
     const [result] = await database
       .insert(todos)
       .values({
+        priority: targetPriority,
         title: input.title,
         description: input.description,
         status: "active",
@@ -57,32 +97,37 @@ export class TodoService {
     const [result] = await database
       .update(todos)
       .set({
-        ...input,
+        title: input.title,
+        description: input.description,
+        status: input.status,
+        due_date: input.due_date,
         updated_at: now,
       })
-      .where(eq(todos.id, input.id))
+      .where(eq(todos.priority, input.priority))
       .returning();
 
     return result ? mapTodoRowToTodo(result) : null;
   }
 
-  static async deleteTodo(id: number): Promise<boolean> {
+  static async deleteTodo(priority: number): Promise<boolean> {
     const database = await db();
-    const result = await database.delete(todos).where(eq(todos.id, id));
+    const result = await database
+      .delete(todos)
+      .where(eq(todos.priority, priority));
 
     return result.changes > 0;
   }
 
-  static async toggleTodo(id: number): Promise<Todo | null> {
+  static async toggleTodo(priority: number): Promise<Todo | null> {
     // First get the current state
-    const current = await TodoService.getTodoById(id);
+    const current = await TodoService.getTodoByPriority(priority);
     if (!current) return null;
 
     // Toggle between active and completed
     const newStatus: TodoStatus =
       current.status === "completed" ? "active" : "completed";
     return TodoService.updateTodo({
-      id,
+      priority,
       status: newStatus,
     });
   }
@@ -93,7 +138,7 @@ export class TodoService {
       .select()
       .from(todos)
       .where(eq(todos.status, "active"))
-      .orderBy(desc(todos.created_at));
+      .orderBy(asc(todos.priority));
 
     return rows.map(mapTodoRowToTodo);
   }
@@ -104,7 +149,7 @@ export class TodoService {
       .select()
       .from(todos)
       .where(eq(todos.status, "completed"))
-      .orderBy(desc(todos.created_at));
+      .orderBy(asc(todos.priority));
 
     return rows.map(mapTodoRowToTodo);
   }
@@ -115,7 +160,7 @@ export class TodoService {
       .select()
       .from(todos)
       .where(eq(todos.status, "archived"))
-      .orderBy(desc(todos.created_at));
+      .orderBy(asc(todos.priority));
 
     return rows.map(mapTodoRowToTodo);
   }
@@ -126,7 +171,7 @@ export class TodoService {
       .select()
       .from(todos)
       .where(eq(todos.status, status))
-      .orderBy(desc(todos.created_at));
+      .orderBy(asc(todos.priority));
 
     return rows.map(mapTodoRowToTodo);
   }

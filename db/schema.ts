@@ -2,7 +2,7 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import type { TodoStatus } from "../types/todo";
 
 export const todos = sqliteTable("todos", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+  priority: integer("priority").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
   status: text("status").$type<TodoStatus>().default("active").notNull(),
