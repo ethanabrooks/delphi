@@ -1,6 +1,7 @@
+import { Link } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Alert } from "react-native";
-import { Button, Text, YStack } from "tamagui";
+import { Alert, Pressable, StyleSheet } from "react-native";
+import { Text, View } from "tamagui";
 import { ConversationAgent } from "../services/conversationAgent";
 import OpenAIClient from "../services/openaiClient";
 import voiceService, { type VoiceRecording } from "../services/voiceService";
@@ -13,8 +14,8 @@ interface TalkProps {
 export default function Talk({ apiKey, customProcessor }: TalkProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [response, setResponse] = useState("");
+  const [_transcript, setTranscript] = useState("");
+  const [_response, setResponse] = useState("");
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [isSupported, setIsSupported] = useState(() =>
     voiceService.isSupported()
@@ -140,9 +141,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     }
   };
 
-  const handlePressIn = async () => {
-    console.log("Talk button pressed down, starting recording...");
-
+  const toggleRecording = async () => {
     if (!isSupported) {
       Alert.alert(
         "Not Supported",
@@ -151,7 +150,10 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
       return;
     }
 
-    if (!isRecording && !isProcessing) {
+    if (isRecording) {
+      console.log("Stopping recording...");
+      await stopRecording();
+    } else if (!isProcessing) {
       // Stop any ongoing speech before starting to record
       voiceService.stopSpeaking();
       console.log("Starting recording...");
@@ -159,16 +161,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     }
   };
 
-  const handlePressOut = async () => {
-    console.log("Talk button released, stopping recording...");
-
-    if (isRecording) {
-      console.log("Stopping recording...");
-      await stopRecording();
-    }
-  };
-
-  const clearConversation = () => {
+  const _clearConversation = () => {
     conversationAgent.clearConversation();
     setConversationId(undefined);
     setTranscript("");
@@ -176,117 +169,115 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
   };
 
   return (
-    <YStack
-      flex={1}
-      justifyContent="center"
-      alignItems="center"
-      padding="$6"
-      gap="$6"
-    >
-      <Text fontSize="$10" fontWeight="bold" color="$gray12" marginBottom="$4">
-        Voice Assistant
-      </Text>
+    <View style={styles.container}>
+      {/* Discrete hamburger menu */}
+      <Link href="/todo" style={styles.hamburger}>
+        <Text style={styles.hamburgerText}>☰</Text>
+      </Link>
 
-      {!isSupported && (
-        <YStack
-          backgroundColor="$yellow3"
-          padding="$4"
-          borderRadius="$4"
-          marginBottom="$4"
-        >
-          <Text color="$yellow11" textAlign="center">
-            Audio capture is unavailable. Please switch to a compatible device
-            or browser.
-          </Text>
-        </YStack>
-      )}
+      {/* Click anywhere to toggle recording */}
+      <Pressable style={styles.recordArea} onPress={toggleRecording}>
+        {/* Recording indicator */}
+        {(isRecording || isProcessing) && (
+          <View style={styles.indicator}>
+            <Text style={styles.indicatorText}>
+              {isRecording ? "🔴 Recording..." : "Processing..."}
+            </Text>
+          </View>
+        )}
 
-      <Button
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        disabled={isProcessing || !isSupported}
-        width={128}
-        height={128}
-        borderRadius={64}
-        backgroundColor={
-          !isSupported
-            ? "$gray6"
-            : isRecording
-              ? "$red9"
-              : isProcessing
-                ? "$yellow9"
-                : "$blue9"
-        }
-        justifyContent="center"
-        alignItems="center"
-        pressStyle={{ opacity: 0.8, scale: 0.95 }}
-        animation="bouncy"
-      >
-        <Text
-          fontSize="$4"
-          fontWeight="600"
-          color={!isSupported ? "$gray10" : "white"}
-          textAlign="center"
-        >
-          {!isSupported
-            ? "Not Supported"
-            : isProcessing
-              ? "Processing..."
-              : isRecording
-                ? "🔴 Recording...\nRelease to Stop"
-                : "🎤 Hold to Record"}
-        </Text>
-      </Button>
-
-      {conversationId && (
-        <Button
-          onPress={clearConversation}
-          size="$3"
-          backgroundColor="$gray8"
-          color="white"
-          marginTop="$3"
-        >
-          Clear Conversation
-        </Button>
-      )}
-
-      {transcript && (
-        <YStack
-          backgroundColor="$gray3"
-          padding="$4"
-          borderRadius="$4"
-          maxWidth={320}
-        >
-          <Text fontSize="$3" color="$gray10" marginBottom="$1">
-            You said:
-          </Text>
-          <Text color="$gray12">{transcript}</Text>
-        </YStack>
-      )}
-
-      {response && (
-        <YStack
-          backgroundColor="$blue3"
-          padding="$4"
-          borderRadius="$4"
-          maxWidth={320}
-        >
-          <Text fontSize="$3" color="$blue10" marginBottom="$1">
-            Assistant:
-          </Text>
-          <Text color="$blue12">{response}</Text>
-        </YStack>
-      )}
-
-      {!apiKey ? (
-        <Text fontSize="$2" color="$gray9" textAlign="center" maxWidth={320}>
-          Demo mode: Add your OpenAI API key for full functionality
-        </Text>
-      ) : (
-        <Text fontSize="$2" color="$gray10" textAlign="center" maxWidth={320}>
-          Using OpenAI Whisper + GPT-4o with advanced conversation management
-        </Text>
-      )}
-    </YStack>
+        {/* Dialogue text display */}
+        {(_transcript || _response) && (
+          <View style={styles.dialogueContainer}>
+            {_transcript && (
+              <View style={styles.userMessage}>
+                <Text style={styles.userLabel}>You:</Text>
+                <Text style={styles.userText}>{_transcript}</Text>
+              </View>
+            )}
+            {_response && (
+              <View style={styles.assistantMessage}>
+                <Text style={styles.assistantLabel}>Assistant:</Text>
+                <Text style={styles.assistantText}>{_response}</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </Pressable>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  hamburger: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+  },
+  hamburgerText: {
+    fontSize: 24,
+    color: "#666666",
+  },
+  recordArea: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  indicator: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  indicatorText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  dialogueContainer: {
+    position: "absolute",
+    bottom: 60,
+    left: 20,
+    right: 20,
+    maxHeight: "40%",
+  },
+  userMessage: {
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  userLabel: {
+    color: "#888888",
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  userText: {
+    color: "#ffffff",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  assistantMessage: {
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    padding: 12,
+    borderRadius: 8,
+  },
+  assistantLabel: {
+    color: "#aaaaaa",
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  assistantText: {
+    color: "#ffffff",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+});
