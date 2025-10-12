@@ -149,7 +149,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     }
   };
 
-  const toggleRecording = async () => {
+  const handlePressIn = async () => {
     if (!isSupported) {
       Alert.alert(
         "Not Supported",
@@ -158,12 +158,18 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
       return;
     }
 
+    if (isRecording || isProcessing) {
+      return;
+    }
+
+    // Stop any ongoing speech before starting to record
+    voiceService.stopSpeaking();
+    await startRecording();
+  };
+
+  const handlePressOut = async () => {
     if (isRecording) {
       await stopRecording();
-    } else if (!isProcessing) {
-      // Stop any ongoing speech before starting to record
-      voiceService.stopSpeaking();
-      await startRecording();
     }
   };
 
@@ -181,8 +187,12 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         <Text style={styles.hamburgerText}>☰</Text>
       </Link>
 
-      {/* Click anywhere to toggle recording */}
-      <Pressable style={styles.recordArea} onPress={toggleRecording}>
+      {/* Press and hold to record */}
+      <Pressable
+        style={styles.recordArea}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
         {/* Recording indicator */}
         {(isRecording || isProcessing) && (
           <View style={styles.indicator}>
