@@ -1,42 +1,32 @@
 import type { Todo, TodoStatus } from "../types/todo";
 
 /**
- * Bumps the priority of todos in-place starting from the given priority within a specific status.
- * All todos with priority >= fromPriority and matching status will have their priority incremented by 1.
- * This is for in-memory array operations (used by test utils).
- *
- * @param todos - Array of todos to modify in-place
- * @param fromPriority - Starting priority to bump from
- * @param withinStatus - Only bump todos with this status
- * @param updatedAt - Timestamp to set for updated todos
- */
-export function bumpTodosFromPriorityInMemory(
-  todos: Todo[],
-  fromPriority: number,
-  withinStatus: TodoStatus,
-  updatedAt: string
-): void {
-  todos.forEach((todo) => {
-    if (todo.priority >= fromPriority && todo.status === withinStatus) {
-      todo.priority += 1;
-      todo.updated_at = updatedAt;
-    }
-  });
-}
-
-/**
- * Calculates the next available priority for a new todo within a specific status.
- * Returns the highest priority (lowest number) available for that status.
+ * Returns the next available priority for new todos (1-based system).
+ * For active todos, finds the highest priority and adds 1.
+ * For non-active todos, priority is not relevant (will be set to null).
  *
  * @param todos - Array of existing todos
  * @param status - Status to calculate priority for
- * @returns Next available priority (defaults to 1 if no todos exist for that status)
+ * @returns Next priority (1-based, starting from 1)
  */
 export function getNextHighestPriority(
   todos: Todo[],
   status: TodoStatus
 ): number {
-  const todosInStatus = todos.filter((t) => t.status === status);
-  if (todosInStatus.length === 0) return 1;
-  return Math.min(...todosInStatus.map((t) => t.priority)) - 1;
+  if (status !== "active") {
+    // Non-active todos don't need meaningful priorities (will be set to null)
+    return 1;
+  }
+
+  const activeTodos = todos.filter(
+    (todo) => todo.status === "active" && todo.priority !== null
+  );
+  if (activeTodos.length === 0) {
+    return 1; // First active todo gets priority 1
+  }
+
+  const maxPriority = Math.max(
+    ...activeTodos.map((todo) => todo.priority as number)
+  );
+  return maxPriority + 1;
 }

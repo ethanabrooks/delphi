@@ -5,7 +5,6 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
-import { eq } from "drizzle-orm";
 import type { TodoStatus } from "../types/todo";
 
 export const todos = sqliteTable(

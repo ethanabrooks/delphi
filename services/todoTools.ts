@@ -10,8 +10,7 @@ const createTodoSchema = z.object({
 });
 
 const updateTodoSchema = z.object({
-  priority: z.number(),
-  status: z.enum(["active", "completed", "archived"]),
+  id: z.number(),
   newPriority: z.number().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
@@ -20,8 +19,7 @@ const updateTodoSchema = z.object({
 });
 
 const todoIdentifierSchema = z.object({
-  priority: z.number(),
-  status: z.enum(["active", "completed", "archived"]),
+  id: z.number(),
 });
 
 export const TODO_TOOLS: Tool[] = [
@@ -58,20 +56,13 @@ export const TODO_TOOLS: Tool[] = [
     function: {
       name: "update_todo",
       description:
-        "Update an existing todo item. Requires both priority and status to identify the todo to update.",
+        "Update an existing todo item. Requires the todo ID to identify the todo to update.",
       parameters: {
         type: "object",
         properties: {
-          priority: {
+          id: {
             type: "number",
-            description:
-              "The priority of the todo to update (part of composite identifier)",
-          },
-          status: {
-            type: "string",
-            description:
-              "The current status of the todo to update (part of composite identifier): 'active', 'completed', or 'archived'",
-            enum: ["active", "completed", "archived"],
+            description: "The unique ID of the todo to update",
           },
           newPriority: {
             type: "number",
@@ -94,7 +85,7 @@ export const TODO_TOOLS: Tool[] = [
             description: "New due date in ISO format",
           },
         },
-        required: ["priority", "status"],
+        required: ["id"],
       },
     },
   },
@@ -103,23 +94,16 @@ export const TODO_TOOLS: Tool[] = [
     function: {
       name: "toggle_todo",
       description:
-        "Toggle the completed status of a todo. Requires both priority and status to identify the todo.",
+        "Toggle the completed status of a todo. Requires the todo ID to identify the todo.",
       parameters: {
         type: "object",
         properties: {
-          priority: {
+          id: {
             type: "number",
-            description:
-              "The priority of the todo to toggle (part of composite identifier)",
-          },
-          status: {
-            type: "string",
-            description:
-              "The current status of the todo to toggle (part of composite identifier): 'active', 'completed', or 'archived'",
-            enum: ["active", "completed", "archived"],
+            description: "The unique ID of the todo to toggle",
           },
         },
-        required: ["priority", "status"],
+        required: ["id"],
       },
     },
   },
@@ -163,7 +147,12 @@ export async function executeTodoFunction(
           });
         }
 
-        const newTodo = await platformTodoService.createTodo(createResult.data);
+        const newTodo = await platformTodoService.createTodo({
+          title: createResult.data.title,
+          description: createResult.data.description,
+          due_date: createResult.data.due_date,
+          priority: createResult.data.priority,
+        });
         return JSON.stringify(newTodo);
       }
 
@@ -175,9 +164,14 @@ export async function executeTodoFunction(
             details: updateResult.error.issues,
           });
         }
-        const updatedTodo = await platformTodoService.updateTodo(
-          updateResult.data
-        );
+        const updatedTodo = await platformTodoService.updateTodo({
+          id: updateResult.data.id,
+          title: updateResult.data.title,
+          description: updateResult.data.description,
+          due_date: updateResult.data.due_date,
+          status: updateResult.data.newStatus,
+          priority: updateResult.data.newPriority,
+        });
         return JSON.stringify(updatedTodo);
       }
 
@@ -190,8 +184,7 @@ export async function executeTodoFunction(
           });
         }
         const toggledTodo = await platformTodoService.toggleTodo(
-          toggleResult.data.priority,
-          toggleResult.data.status
+          toggleResult.data.id
         );
         return JSON.stringify(toggledTodo);
       }

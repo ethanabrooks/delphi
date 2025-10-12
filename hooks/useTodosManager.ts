@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import * as React from "react";
 import {
   isWebPlatform,
   platformTodoService,
@@ -26,14 +26,26 @@ export interface UseTodosManagerResult {
   error: string | null;
   lastMutation: MutationType;
   addTodo: (input: CreateTodoInput) => Promise<void>;
-  updateTodo: (input: UpdateTodoInput) => Promise<void>;
-  toggleTodo: (priority: number, status: TodoStatus) => Promise<void>;
-  deleteTodo: (priority: number, status: TodoStatus) => Promise<void>;
+  updateTodo: (input: UpdateTodoInput & { id: number }) => Promise<void>;
+  toggleTodo: (identifier: number, status: TodoStatus) => Promise<void>;
+  deleteTodo: (identifier: number, status: TodoStatus) => Promise<void>;
   refetch: () => Promise<void>;
 }
 
 const formatError = (prefix: string, error: unknown) =>
   `${prefix}: ${error instanceof Error ? error.message : String(error)}`;
+
+const globalReactContainer = globalThis as {
+  __delphiReactSingleton?: typeof React;
+};
+
+let sharedReact = globalReactContainer.__delphiReactSingleton;
+if (!sharedReact) {
+  sharedReact = React;
+  globalReactContainer.__delphiReactSingleton = sharedReact;
+}
+
+const { useCallback, useEffect, useMemo, useState } = sharedReact;
 
 export default function useTodosManager(): UseTodosManagerResult {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -87,82 +99,69 @@ export default function useTodosManager(): UseTodosManagerResult {
     }
   }, []);
 
-  const updateTodo = useCallback(async (input: UpdateTodoInput) => {
-    try {
-      setLastMutation("update");
-      setError(null);
-      const updated = await platformTodoService.updateTodo(input);
+  const updateTodo = useCallback(
+    async (input: UpdateTodoInput & { id: number }) => {
+      try {
+        setLastMutation("update");
+        setError(null);
+        const updated = await platformTodoService.updateTodo(input);
 
-      if (!updated) {
+        if (!updated) {
+          setError("Todo not found");
+          return;
+        }
+
+        setTodos((previous) =>
+          previous.map((todo) => (todo.id === updated.id ? updated : todo))
+        );
+      } catch (updateError) {
+        setError(formatError("Failed to update todo", updateError));
+      } finally {
+        setLastMutation(null);
+      }
+    },
+    []
+  );
+
+  const toggleTodo = useCallback(async (id: number) => {
+    try {
+      setLastMutation("toggle");
+      setError(null);
+      const toggled = await platformTodoService.toggleTodo(id);
+
+      if (!toggled) {
         setError("Todo not found");
         return;
       }
 
       setTodos((previous) =>
-        previous.map((todo) =>
-          todo.priority === input.priority ? updated : todo
-        )
+        previous.map((todo) => (todo.id === toggled.id ? toggled : todo))
       );
-    } catch (updateError) {
-      setError(formatError("Failed to update todo", updateError));
+    } catch (toggleError) {
+      setError(formatError("Failed to toggle todo", toggleError));
     } finally {
       setLastMutation(null);
     }
   }, []);
 
-  const toggleTodo = useCallback(
-    async (priority: number, status: TodoStatus) => {
-      try {
-        setLastMutation("toggle");
-        setError(null);
-        const toggled = await platformTodoService.toggleTodo(priority, status);
+  const deleteTodo = useCallback(async (id: number) => {
+    try {
+      setLastMutation("delete");
+      setError(null);
+      const success = await platformTodoService.deleteTodo(id);
 
-        if (!toggled) {
-          setError("Todo not found");
-          return;
-        }
-
-        setTodos((previous) =>
-          previous.map((todo) =>
-            todo.priority === priority && todo.status === status
-              ? toggled
-              : todo
-          )
-        );
-      } catch (toggleError) {
-        setError(formatError("Failed to toggle todo", toggleError));
-      } finally {
-        setLastMutation(null);
+      if (!success) {
+        setError("Todo not found");
+        return;
       }
-    },
-    []
-  );
 
-  const deleteTodo = useCallback(
-    async (priority: number, status: TodoStatus) => {
-      try {
-        setLastMutation("delete");
-        setError(null);
-        const success = await platformTodoService.deleteTodo(priority, status);
-
-        if (!success) {
-          setError("Todo not found");
-          return;
-        }
-
-        setTodos((previous) =>
-          previous.filter(
-            (todo) => !(todo.priority === priority && todo.status === status)
-          )
-        );
-      } catch (deleteError) {
-        setError(formatError("Failed to delete todo", deleteError));
-      } finally {
-        setLastMutation(null);
-      }
-    },
-    []
-  );
+      setTodos((previous) => previous.filter((todo) => todo.id !== id));
+    } catch (deleteError) {
+      setError(formatError("Failed to delete todo", deleteError));
+    } finally {
+      setLastMutation(null);
+    }
+  }, []);
 
   const stats = useMemo<TodoStats>(() => {
     const total = todos.length;

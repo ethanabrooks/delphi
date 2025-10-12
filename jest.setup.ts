@@ -1,4 +1,12 @@
-import type { ChangeEvent, ComponentType, ReactNode } from "react";
+import type { ChangeEvent, ComponentType, ReactNode, Ref } from "react";
+
+const reactSingletonSetup = require("react") as typeof import("react");
+const globalReactRef = globalThis as {
+  __delphiReactSingleton?: typeof reactSingletonSetup;
+};
+if (!globalReactRef.__delphiReactSingleton) {
+  globalReactRef.__delphiReactSingleton = reactSingletonSetup;
+}
 
 if (typeof window !== "undefined" && !window.matchMedia) {
   window.matchMedia = (() => ({
@@ -62,7 +70,7 @@ jest.mock("tamagui", () => {
           children,
           ...rest
         }: { children?: ReactNode } & Record<string, unknown>,
-        ref: any
+        ref: Ref<unknown>
       ) => React.createElement(Component, { ref, ...rest }, children)
     );
 
@@ -84,7 +92,7 @@ jest.mock("tamagui", () => {
         onPress?: () => void;
         disabled?: boolean;
       } & Record<string, unknown>,
-      ref: any
+      ref: Ref<unknown>
     ) =>
       React.createElement(
         Pressable,
@@ -112,7 +120,7 @@ jest.mock("tamagui", () => {
         placeholder?: string;
         value?: string;
       } & Record<string, unknown>,
-      ref: any
+      ref: Ref<unknown>
     ) =>
       React.createElement(TextInput, {
         ref,
@@ -151,8 +159,9 @@ jest.mock("./db/database", () => ({
 
 // Suppress React act() warnings in tests - these are unavoidable when Zustand store
 // updates happen during component lifecycle and don't affect actual functionality
+// biome-ignore lint/suspicious/noConsole: test environment overrides console.error for noise control
 const originalConsoleError = console.error;
-console.error = (...args: any[]) => {
+console.error = (...args: unknown[]) => {
   const message = args[0]?.toString() || "";
 
   // Suppress specific React act() warnings that occur during store updates
@@ -166,7 +175,8 @@ console.error = (...args: any[]) => {
   }
 
   // Allow all other console.error messages through
-  originalConsoleError.apply(console, args);
+  const typedArgs = args as Parameters<typeof console.error>;
+  originalConsoleError.apply(console, typedArgs);
 };
 
 // Global TodoService mock with simple synchronous behavior

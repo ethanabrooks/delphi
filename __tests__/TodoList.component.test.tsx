@@ -28,12 +28,17 @@ describe("TodoList Component - Tamagui Mock Tests", () => {
     mockUseTodosManager.mockReturnValue(createHookReturn());
   });
 
-  test("should render basic UI components correctly", async () => {
+  test("should render debug header and empty-state columns", async () => {
     render(<TodoList />);
 
     await waitFor(() => {
-      expect(screen.getByText("My Todo List")).toBeTruthy();
-      expect(screen.getByText("No todos yet! Add one above.")).toBeTruthy();
+      expect(screen.getByText("Todo Debug Board")).toBeTruthy();
+      expect(screen.getByText("Active (0)")).toBeTruthy();
+      expect(screen.getByText("Completed (0)")).toBeTruthy();
+      expect(screen.getByText("Archived (0)")).toBeTruthy();
+      expect(screen.getByText("No active todos")).toBeTruthy();
+      expect(screen.getByText("No completed todos")).toBeTruthy();
+      expect(screen.getByText("No archived todos")).toBeTruthy();
     });
   });
 
@@ -41,20 +46,21 @@ describe("TodoList Component - Tamagui Mock Tests", () => {
     render(<TodoList />);
 
     await waitFor(() => {
-      expect(
-        screen.getByPlaceholderText("What needs to be done?")
-      ).toBeTruthy();
+      expect(screen.getByPlaceholderText("Add todo...")).toBeTruthy();
       expect(screen.getByTestId("add-todo-button")).toBeTruthy();
     });
   });
 
-  test("should show loading state correctly", () => {
+  test("disables the add button while loading", () => {
     const hookValue = createHookReturn();
     hookValue.isLoading = true;
     mockUseTodosManager.mockReturnValue(hookValue);
 
     render(<TodoList />);
 
-    expect(screen.getByText("Loading...")).toBeTruthy();
+    expect(screen.getByTestId("add-todo-button")).toHaveProp(
+      "accessibilityState",
+      expect.objectContaining({ disabled: true })
+    );
   });
 });
