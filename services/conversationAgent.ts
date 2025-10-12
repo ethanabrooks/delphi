@@ -36,6 +36,16 @@ ${activeTodos.map((todo) => `- Priority ${todo.priority}: "${todo.title}"${todo.
 
     return `You are a helpful voice assistant that can manage todo items. You have access to a todo management system with the following functions: create_todo, update_todo, and toggle_todo.
 
+Current date and time: ${new Date().toLocaleString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    })}
+
 IMPORTANT: You can see the complete list of active todos below. If a user tries to create a todo that already exists (similar or identical title), notify them that the todo already exists instead of creating a duplicate.
 
 Available Functions:
@@ -88,6 +98,23 @@ Keep responses conversational and concise since this is a voice interface.`;
       content: userMessage,
     });
 
+    // Display full chat history before processing
+    console.log("=== FULL CHAT HISTORY (Before Processing) ===");
+    this.state.messages.forEach((msg, index) => {
+      console.log(`[${index}] ${msg.role.toUpperCase()}:`);
+      if (msg.content) {
+        console.log(`Content: ${msg.content}`);
+      }
+      if (msg.tool_calls) {
+        console.log(`Tool calls: ${JSON.stringify(msg.tool_calls, null, 2)}`);
+      }
+      if (msg.tool_call_id) {
+        console.log(`Tool call ID: ${msg.tool_call_id}, Name: ${msg.name}`);
+      }
+      console.log("---");
+    });
+    console.log("=== END CHAT HISTORY ===");
+
     try {
       // Try Responses API first if we have a conversation ID or it's the first try
       try {
@@ -136,6 +163,29 @@ Keep responses conversational and concise since this is a voice interface.`;
             content: assistantResponse,
           });
 
+          // Display full chat history after Responses API with tools
+          console.log(
+            "=== FULL CHAT HISTORY (After Responses API + Tools) ==="
+          );
+          this.state.messages.forEach((msg, index) => {
+            console.log(`[${index}] ${msg.role.toUpperCase()}:`);
+            if (msg.content) {
+              console.log(`Content: ${msg.content}`);
+            }
+            if (msg.tool_calls) {
+              console.log(
+                `Tool calls: ${JSON.stringify(msg.tool_calls, null, 2)}`
+              );
+            }
+            if (msg.tool_call_id) {
+              console.log(
+                `Tool call ID: ${msg.tool_call_id}, Name: ${msg.name}`
+              );
+            }
+            console.log("---");
+          });
+          console.log("=== END CHAT HISTORY ===");
+
           return assistantResponse;
         }
 
@@ -147,6 +197,25 @@ Keep responses conversational and concise since this is a voice interface.`;
           role: "assistant",
           content: assistantResponse,
         });
+
+        // Display full chat history after Responses API (no tools)
+        console.log("=== FULL CHAT HISTORY (After Responses API) ===");
+        this.state.messages.forEach((msg, index) => {
+          console.log(`[${index}] ${msg.role.toUpperCase()}:`);
+          if (msg.content) {
+            console.log(`Content: ${msg.content}`);
+          }
+          if (msg.tool_calls) {
+            console.log(
+              `Tool calls: ${JSON.stringify(msg.tool_calls, null, 2)}`
+            );
+          }
+          if (msg.tool_call_id) {
+            console.log(`Tool call ID: ${msg.tool_call_id}, Name: ${msg.name}`);
+          }
+          console.log("---");
+        });
+        console.log("=== END CHAT HISTORY ===");
 
         return assistantResponse;
       } catch (_responsesError) {
@@ -212,9 +281,45 @@ Keep responses conversational and concise since this is a voice interface.`;
           ];
         }
 
+        // Display full chat history after processing
+        console.log("=== FULL CHAT HISTORY (After Processing) ===");
+        this.state.messages.forEach((msg, index) => {
+          console.log(`[${index}] ${msg.role.toUpperCase()}:`);
+          if (msg.content) {
+            console.log(`Content: ${msg.content}`);
+          }
+          if (msg.tool_calls) {
+            console.log(
+              `Tool calls: ${JSON.stringify(msg.tool_calls, null, 2)}`
+            );
+          }
+          if (msg.tool_call_id) {
+            console.log(`Tool call ID: ${msg.tool_call_id}, Name: ${msg.name}`);
+          }
+          console.log("---");
+        });
+        console.log("=== END CHAT HISTORY ===");
+
         return assistantResponse;
       }
     } catch (_error) {
+      // Display chat history even on error
+      console.log("=== FULL CHAT HISTORY (Error occurred) ===");
+      this.state.messages.forEach((msg, index) => {
+        console.log(`[${index}] ${msg.role.toUpperCase()}:`);
+        if (msg.content) {
+          console.log(`Content: ${msg.content}`);
+        }
+        if (msg.tool_calls) {
+          console.log(`Tool calls: ${JSON.stringify(msg.tool_calls, null, 2)}`);
+        }
+        if (msg.tool_call_id) {
+          console.log(`Tool call ID: ${msg.tool_call_id}, Name: ${msg.name}`);
+        }
+        console.log("---");
+      });
+      console.log("=== END CHAT HISTORY ===");
+
       return "I'm sorry, I encountered an error processing your request. Please try again.";
     }
   }
