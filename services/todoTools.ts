@@ -10,6 +10,7 @@ const createTodoSchema = z.object({
 
 const updateTodoSchema = z.object({
   priority: z.number(),
+  newPriority: z.number().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
   status: z.enum(["active", "completed", "archived"]).optional(),
@@ -54,6 +55,11 @@ export const TODO_TOOLS: Tool[] = [
           priority: {
             type: "number",
             description: "The priority of the todo to update",
+          },
+          newPriority: {
+            type: "number",
+            description:
+              "New priority to move the todo to (optional). If provided, other todos will be bumped down to maintain ordering.",
           },
           title: { type: "string", description: "New title for the todo" },
           description: {

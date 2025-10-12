@@ -1,4 +1,8 @@
 import type { CreateTodoInput, Todo, UpdateTodoInput } from "../types/todo";
+import {
+  bumpTodosFromPriorityInMemory,
+  getNextHighestPriority,
+} from "../utils/priorityUtils";
 
 // In-memory test database
 let testTodos: Todo[] = [];
@@ -26,18 +30,10 @@ const sharedTestTodoService = {
     if (input.priority !== undefined) {
       targetPriority = input.priority;
       // Bump existing todos with same or higher priority
-      testTodos.forEach((todo) => {
-        if (todo.priority >= targetPriority) {
-          todo.priority += 1;
-          todo.updated_at = now;
-        }
-      });
+      bumpTodosFromPriorityInMemory(testTodos, targetPriority, now);
     } else {
       // Assign highest priority (lowest number)
-      targetPriority =
-        testTodos.length > 0
-          ? Math.min(...testTodos.map((t) => t.priority)) - 1
-          : 1;
+      targetPriority = getNextHighestPriority(testTodos);
     }
 
     const newTodo: Todo = {
@@ -59,18 +55,42 @@ const sharedTestTodoService = {
     );
     if (index === -1) return null;
 
-    const updatedTodo = {
-      ...testTodos[index],
-      ...(input.title !== undefined && { title: input.title }),
-      ...(input.description !== undefined && {
-        description: input.description,
-      }),
-      ...(input.status !== undefined && { status: input.status }),
-      ...(input.due_date !== undefined && { due_date: input.due_date }),
-      updated_at: new Date().toISOString(),
-    };
-    testTodos[index] = updatedTodo;
-    return updatedTodo;
+    const currentTodo = testTodos[index];
+    const now = new Date().toISOString();
+
+    // Check if we're changing the priority
+    if (
+      input.newPriority !== undefined &&
+      input.newPriority !== input.priority
+    ) {
+      // We're changing priority - handle bumping
+      bumpTodosFromPriorityInMemory(testTodos, input.newPriority, now);
+
+      // Update the todo with new priority and other fields
+      const updatedTodo = {
+        ...currentTodo,
+        priority: input.newPriority,
+        title: input.title ?? currentTodo.title,
+        description: input.description ?? currentTodo.description,
+        status: input.status ?? currentTodo.status,
+        due_date: input.due_date ?? currentTodo.due_date,
+        updated_at: now,
+      };
+      testTodos[index] = updatedTodo;
+      return updatedTodo;
+    } else {
+      // Not changing priority - just update other fields
+      const updatedTodo = {
+        ...currentTodo,
+        title: input.title ?? currentTodo.title,
+        description: input.description ?? currentTodo.description,
+        status: input.status ?? currentTodo.status,
+        due_date: input.due_date ?? currentTodo.due_date,
+        updated_at: now,
+      };
+      testTodos[index] = updatedTodo;
+      return updatedTodo;
+    }
   },
 
   async deleteTodo(priority: number): Promise<boolean> {

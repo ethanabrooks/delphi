@@ -153,4 +153,37 @@ describe("TodoService Integration Test", () => {
       archived: 1,
     });
   });
+
+  test("updateTodo should handle priority changes with bumping", async () => {
+    // Create three todos with specific priorities
+    const _todo1 = await TodoService.createTodo({
+      title: "First",
+      priority: 1,
+    });
+    const _todo2 = await TodoService.createTodo({
+      title: "Second",
+      priority: 2,
+    });
+    const todo3 = await TodoService.createTodo({ title: "Third", priority: 3 });
+
+    // Move todo3 (priority 3) to priority 2
+    // This should bump todo2 from priority 2 to priority 3
+    await TodoService.updateTodo({
+      priority: todo3.priority,
+      newPriority: 2,
+    });
+
+    // Get all todos and verify the new ordering
+    const allTodos = await TodoService.getAllTodos();
+
+    // Should be ordered by priority: 1, 2, 3
+    expect(allTodos[0].title).toBe("First");
+    expect(allTodos[0].priority).toBe(1);
+
+    expect(allTodos[1].title).toBe("Third"); // Originally priority 3, moved to 2
+    expect(allTodos[1].priority).toBe(2);
+
+    expect(allTodos[2].title).toBe("Second"); // Originally priority 2, bumped to 3
+    expect(allTodos[2].priority).toBe(3);
+  });
 });

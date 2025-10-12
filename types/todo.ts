@@ -18,7 +18,8 @@ export interface CreateTodoInput {
 }
 
 export interface UpdateTodoInput {
-  priority: number;
+  priority: number; // Which todo to update (current priority)
+  newPriority?: number; // Optional new priority to move the todo to
   title?: string;
   description?: string;
   status?: TodoStatus;

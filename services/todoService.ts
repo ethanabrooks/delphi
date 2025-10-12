@@ -7,6 +7,7 @@ import type {
   TodoStatus,
   UpdateTodoInput,
 } from "../types/todo";
+import { getNextHighestPriority } from "../utils/priorityUtils";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: service methods map directly to SQL helpers
 export class TodoService {
@@ -66,12 +67,9 @@ export class TodoService {
       // Check if priority already exists and bump if needed
       await TodoService.bumpTodosFromPriority(targetPriority);
     } else {
-      // Assign highest priority (lowest number) - get current min and subtract 1
+      // Assign highest priority (lowest number)
       const allTodos = await TodoService.getAllTodos();
-      targetPriority =
-        allTodos.length > 0
-          ? Math.min(...allTodos.map((t) => t.priority)) - 1
-          : 1;
+      targetPriority = getNextHighestPriority(allTodos);
     }
 
     const [result] = await database
@@ -94,19 +92,49 @@ export class TodoService {
     const database = await db();
     const now = new Date().toISOString();
 
-    const [result] = await database
-      .update(todos)
-      .set({
-        title: input.title,
-        description: input.description,
-        status: input.status,
-        due_date: input.due_date,
-        updated_at: now,
-      })
-      .where(eq(todos.priority, input.priority))
-      .returning();
+    // First, get the current todo to check if it exists
+    const currentTodo = await TodoService.getTodoByPriority(input.priority);
+    if (!currentTodo) return null;
 
-    return result ? mapTodoRowToTodo(result) : null;
+    // Check if we're changing the priority
+    if (
+      input.newPriority !== undefined &&
+      input.newPriority !== input.priority
+    ) {
+      // We're changing priority - handle bumping
+      await TodoService.bumpTodosFromPriority(input.newPriority);
+
+      // Update the todo with new priority and other fields
+      const [result] = await database
+        .update(todos)
+        .set({
+          priority: input.newPriority,
+          title: input.title ?? currentTodo.title,
+          description: input.description ?? currentTodo.description,
+          status: input.status ?? currentTodo.status,
+          due_date: input.due_date ?? currentTodo.due_date,
+          updated_at: now,
+        })
+        .where(eq(todos.priority, input.priority))
+        .returning();
+
+      return result ? mapTodoRowToTodo(result) : null;
+    } else {
+      // Not changing priority - just update other fields
+      const [result] = await database
+        .update(todos)
+        .set({
+          title: input.title ?? currentTodo.title,
+          description: input.description ?? currentTodo.description,
+          status: input.status ?? currentTodo.status,
+          due_date: input.due_date ?? currentTodo.due_date,
+          updated_at: now,
+        })
+        .where(eq(todos.priority, input.priority))
+        .returning();
+
+      return result ? mapTodoRowToTodo(result) : null;
+    }
   }
 
   static async deleteTodo(priority: number): Promise<boolean> {
