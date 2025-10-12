@@ -1,3 +1,4 @@
+import { ResizeMode, Video } from "expo-av";
 import { Link } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, StyleSheet } from "react-native";
@@ -182,10 +183,9 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 
   return (
     <View style={styles.container}>
-      {/* Background video - add your video file to assets/videos/background-video.mp4 */}
-      {/*
+      {/* Background video */}
       <Video
-        style={StyleSheet.absoluteFillObject}
+        style={styles.backgroundVideo}
         source={{
           uri: require("../assets/videos/background-video.mp4"),
         }}
@@ -195,7 +195,6 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         resizeMode={ResizeMode.COVER}
         useNativeControls={false}
       />
-      */}
 
       {/* Discrete hamburger menu */}
       <Link href="/todo" style={styles.hamburger}>
@@ -248,7 +247,16 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000", // Change to "transparent" when video is enabled
+    backgroundColor: "transparent",
+  },
+  backgroundVideo: {
+    position: "absolute",
+    top: -50,
+    left: 0,
+    bottom: 0,
+    right: 0,
+    width: "100%",
+    height: "110%",
   },
   hamburger: {
     position: "absolute",
@@ -259,7 +267,7 @@ const styles = StyleSheet.create({
   },
   hamburgerText: {
     fontSize: 24,
-    color: "#666666",
+    color: "#ffffff",
   },
   recordArea: {
     flex: 1,
