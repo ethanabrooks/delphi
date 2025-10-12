@@ -28,20 +28,12 @@ class WebTodoService {
     now: string,
     excludeTodo?: Todo
   ): Todo[] {
-    console.log(
-      `[BUMP] Bumping active todos with priority >= ${fromPriority}, excluding:`,
-      excludeTodo ? `id:${excludeTodo.id}` : "none"
-    );
-
     const result = todos.map((todo) => {
       if (
         todo !== excludeTodo &&
         todo.status === "active" &&
         todo.priority >= fromPriority
       ) {
-        console.log(
-          `[BUMP] Bumping todo id:${todo.id} "${todo.title}" from priority ${todo.priority} to ${todo.priority + 1}`
-        );
         return { ...todo, priority: todo.priority + 1, updated_at: now };
       }
       return todo;
@@ -60,10 +52,6 @@ class WebTodoService {
     targetPriority: number,
     now: string
   ): Todo[] {
-    console.log(
-      `[REORDER] Moving todo id:${todoToMove.id} "${todoToMove.title}" from priority ${todoToMove.priority} to ${targetPriority}`
-    );
-
     const result = [...todos];
     const currentPriority = todoToMove.priority as number;
 
@@ -89,10 +77,6 @@ class WebTodoService {
       const movingTodo = result[movingTodoIndex];
       const swapTodo = result[swapTodoIndex];
 
-      console.log(
-        `[REORDER] Swapping: "${movingTodo.title}"(${movingTodo.priority}) ↔ "${swapTodo.title}"(${swapTodo.priority})`
-      );
-
       result[movingTodoIndex] = {
         ...movingTodo,
         priority: nextPriority,
@@ -106,14 +90,6 @@ class WebTodoService {
 
       movingPriority = nextPriority;
     }
-
-    console.log(
-      `[REORDER] Final result:`,
-      result
-        .filter((t) => t.status === "active")
-        .sort((a, b) => (a.priority as number) - (b.priority as number))
-        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
-    );
 
     return result;
   }
@@ -150,28 +126,11 @@ class WebTodoService {
     const todos = WebTodoService.read();
     const now = new Date().toISOString();
 
-    console.log(
-      `[CREATE] Creating todo "${input.title}" at priority ${input.priority}`
-    );
-    console.log(
-      `[CREATE] Current active todos:`,
-      todos
-        .filter((t) => t.status === "active")
-        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
-    );
-
     // Bump existing todos with the same status and priority >= input.priority
     const bumped = WebTodoService.bumpActiveTodosFromPriority(
       todos,
       input.priority,
       now
-    );
-
-    console.log(
-      `[CREATE] After bumping:`,
-      bumped
-        .filter((t) => t.status === "active")
-        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
     );
 
     // Generate next autoincrement ID
@@ -192,13 +151,6 @@ class WebTodoService {
 
     WebTodoService.write([newTodo, ...bumped]);
 
-    console.log(
-      `[CREATE] Final result:`,
-      [newTodo, ...bumped]
-        .filter((t) => t.status === "active")
-        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
-    );
-
     return newTodo;
   }
 
@@ -212,18 +164,6 @@ class WebTodoService {
       return null;
     }
 
-    console.log(
-      `[UPDATE] Updating todo id:${input.id} "${currentTodo.title}" from priority:${currentTodo.priority} status:${currentTodo.status}`
-    );
-    console.log(
-      `[UPDATE] New values: priority:${input.priority} status:${input.status}`
-    );
-    console.log(
-      `[UPDATE] Current active todos:`,
-      todos
-        .filter((t) => t.status === "active")
-        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
-    );
     const index = todos.findIndex((todo) => todo.id === input.id);
     const newPriority = input.priority ?? currentTodo.priority;
     const newStatus = input.status ?? currentTodo.status;
@@ -303,13 +243,6 @@ class WebTodoService {
       todos[index] = updated;
       WebTodoService.write(todos);
 
-      console.log(
-        `[UPDATE] Simple update complete:`,
-        todos
-          .filter((t) => t.status === "active")
-          .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
-      );
-
       return updated;
     }
   }
@@ -319,27 +252,12 @@ class WebTodoService {
     const todoToDelete = todos.find((t) => t.id === id);
 
     if (todoToDelete) {
-      console.log(
-        `[DELETE] Deleting todo id:${id} "${todoToDelete.title}" priority:${todoToDelete.priority} status:${todoToDelete.status}`
-      );
-      console.log(
-        `[DELETE] Before deletion:`,
-        todos
-          .filter((t) => t.status === "active")
-          .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
-      );
     }
 
     const filtered = todos.filter((todo) => todo.id !== id);
     WebTodoService.write(filtered);
 
     if (todoToDelete) {
-      console.log(
-        `[DELETE] After deletion:`,
-        filtered
-          .filter((t) => t.status === "active")
-          .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
-      );
     }
 
     return filtered.length !== todos.length;
@@ -355,24 +273,11 @@ class WebTodoService {
 
     // Only allow toggling between active and completed
     if (todo.status !== "active" && todo.status !== "completed") {
-      console.log(
-        `[TOGGLE_COMPLETED] Cannot toggle ${todo.status} todo - use toggleArchived for archived todos`
-      );
       return todo; // Return unchanged
     }
 
     const newStatus: TodoStatus =
       todo.status === "active" ? "completed" : "active";
-
-    console.log(
-      `[TOGGLE_COMPLETED] Toggling todo id:${id} "${todo.title}" from ${todo.status} to ${newStatus}`
-    );
-    console.log(
-      `[TOGGLE_COMPLETED] Before toggle:`,
-      todos
-        .filter((t) => t.status === "active")
-        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
-    );
 
     // Create update payload with required ID
     const updateInput: PlatformUpdatePayload = {
@@ -397,24 +302,11 @@ class WebTodoService {
 
     // Only allow toggling between active and archived
     if (todo.status !== "active" && todo.status !== "archived") {
-      console.log(
-        `[TOGGLE_ARCHIVED] Cannot toggle ${todo.status} todo - use toggleCompleted for completed todos`
-      );
       return todo; // Return unchanged
     }
 
     const newStatus: TodoStatus =
       todo.status === "active" ? "archived" : "active";
-
-    console.log(
-      `[TOGGLE_ARCHIVED] Toggling todo id:${id} "${todo.title}" from ${todo.status} to ${newStatus}`
-    );
-    console.log(
-      `[TOGGLE_ARCHIVED] Before toggle:`,
-      todos
-        .filter((t) => t.status === "active")
-        .map((t) => `id:${t.id} priority:${t.priority} title:"${t.title}"`)
-    );
 
     // Create update payload with required ID
     const updateInput: PlatformUpdatePayload = {
@@ -553,9 +445,6 @@ class PlatformTodoServiceWrapper {
     if (!todo) return null;
 
     const newStatus = todo.status === "active" ? "completed" : "active";
-    console.log(
-      `[TOGGLE_COMPLETED] Native: Toggling todo id:${id} "${todo.title}" from ${todo.status} to ${newStatus}`
-    );
 
     const updateInput: UpdateTodoInput = { status: newStatus };
     if (newStatus === "active") {
@@ -576,9 +465,6 @@ class PlatformTodoServiceWrapper {
     if (!todo) return null;
 
     const newStatus = todo.status === "active" ? "archived" : "active";
-    console.log(
-      `[TOGGLE_ARCHIVED] Native: Toggling todo id:${id} "${todo.title}" from ${todo.status} to ${newStatus}`
-    );
 
     const updateInput: UpdateTodoInput = { status: newStatus };
     if (newStatus === "active") {

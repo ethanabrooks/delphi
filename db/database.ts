@@ -56,8 +56,6 @@ export const initializeDatabase = async () => {
   // Reset global state to ensure fresh initialization (important for tests)
   dbInstance = null;
   expoInstance = null;
-  // eslint-disable-next-line no-console
-  console.log("initializeDatabase invoked");
 
   const openDatabaseAsync = await loadOpenDatabaseAsync();
   const databaseHandle = await openDatabaseAsync("todos.db");
