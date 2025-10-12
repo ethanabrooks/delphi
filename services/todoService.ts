@@ -1,12 +1,7 @@
-import { and, asc, eq, gte } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNotNull } from "drizzle-orm";
 import { db, mapTodoRowToTodo } from "../db/database";
 import { todos } from "../db/schema";
-import type {
-  CreateTodoInput,
-  Todo,
-  TodoStatus,
-  UpdateTodoInput,
-} from "../types/todo";
+import type { CreateTodoInput, Todo, TodoStatus } from "../types/todo";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: service methods map directly to SQL helpers
 export class TodoService {
@@ -20,46 +15,55 @@ export class TodoService {
     return rows.map(mapTodoRowToTodo);
   }
 
-  static async getTodoByIdentifier(
-    priority: number,
-    status: TodoStatus
-  ): Promise<Todo | null> {
+  static async getTodoById(id: number): Promise<Todo | null> {
     const database = await db();
     const rows = await database
       .select()
       .from(todos)
-      .where(and(eq(todos.priority, priority), eq(todos.status, status)))
+      .where(eq(todos.id, id))
       .limit(1);
 
     return rows.length > 0 ? mapTodoRowToTodo(rows[0]) : null;
   }
 
-  private static async bumpTodosFromPriority(
-    fromPriority: number,
-    withinStatus: TodoStatus
+  private static async getNextActivePriority(): Promise<number> {
+    const database = await db();
+    // Get the highest priority from active todos
+    const result = await database
+      .select({ maxPriority: todos.priority })
+      .from(todos)
+      .where(and(eq(todos.status, "active"), isNotNull(todos.priority)))
+      .orderBy(desc(todos.priority))
+      .limit(1);
+
+    return result.length > 0 && result[0].maxPriority !== null
+      ? result[0].maxPriority + 1
+      : 1;
+  }
+
+  private static async shiftDownFromPriority(
+    fromPriority: number
   ): Promise<void> {
     const database = await db();
 
-    // Get all todos with priority >= fromPriority in the same status, ordered by priority
-    const todosToUpdate = await database
+    // Get all active todos with priority > fromPriority
+    const todosToShift = await database
       .select()
       .from(todos)
-      .where(
-        and(gte(todos.priority, fromPriority), eq(todos.status, withinStatus))
-      )
+      .where(and(eq(todos.status, "active"), gt(todos.priority, fromPriority)))
       .orderBy(asc(todos.priority));
 
-    // Update each todo's priority by incrementing it by 1
-    for (const todo of todosToUpdate) {
-      await database
-        .update(todos)
-        .set({
-          priority: todo.priority + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .where(
-          and(eq(todos.priority, todo.priority), eq(todos.status, todo.status))
-        );
+    // Decrement each priority by 1
+    for (const todo of todosToShift) {
+      if (todo.priority !== null) {
+        await database
+          .update(todos)
+          .set({
+            priority: todo.priority - 1,
+            updated_at: new Date().toISOString(),
+          })
+          .where(eq(todos.id, todo.id));
+      }
     }
   }
 
@@ -67,127 +71,159 @@ export class TodoService {
     const database = await db();
     const now = new Date().toISOString();
 
-    // Priority is now required, so use it directly
-    const targetPriority = input.priority;
-    const targetStatus: TodoStatus = "active";
+    await database.transaction(async (tx) => {
+      // For new todos, assign the next available priority in active status
+      const nextPriority = await TodoService.getNextActivePriority();
 
-    // Check if priority already exists within the active status and bump if needed
-    await TodoService.bumpTodosFromPriority(targetPriority, targetStatus);
-
-    const [result] = await database
-      .insert(todos)
-      .values({
-        priority: targetPriority,
+      await tx.insert(todos).values({
+        priority: nextPriority,
         title: input.title,
         description: input.description,
-        status: targetStatus,
+        status: "active",
         due_date: input.due_date,
         created_at: now,
         updated_at: now,
-      })
-      .returning();
+      });
+    });
 
-    return mapTodoRowToTodo(result);
+    // Fetch and return the created todo
+    const result = await database
+      .select()
+      .from(todos)
+      .where(and(eq(todos.title, input.title), eq(todos.created_at, now)))
+      .limit(1);
+
+    return mapTodoRowToTodo(result[0]);
   }
 
-  static async updateTodo(input: UpdateTodoInput): Promise<Todo | null> {
+  static async updateTodo(
+    id: number,
+    updates: Partial<
+      Pick<Todo, "title" | "description" | "due_date" | "status">
+    >
+  ): Promise<Todo | null> {
     const database = await db();
     const now = new Date().toISOString();
 
-    // First, get the current todo to check if it exists
-    const currentTodo = await TodoService.getTodoByIdentifier(
-      input.priority,
-      input.status
-    );
+    // Get the current todo
+    const currentTodo = await TodoService.getTodoById(id);
     if (!currentTodo) return null;
 
-    const newPriority = input.newPriority ?? input.priority;
-    const newStatus = input.newStatus ?? input.status;
+    let result: Todo | null = null;
 
-    // Check if we're changing the priority or status
-    if (
-      (input.newPriority !== undefined &&
-        input.newPriority !== input.priority) ||
-      (input.newStatus !== undefined && input.newStatus !== input.status)
-    ) {
-      // We're changing priority or status - handle bumping in target status
-      if (
-        input.newPriority !== undefined &&
-        input.newPriority !== input.priority
-      ) {
-        await TodoService.bumpTodosFromPriority(newPriority, newStatus);
+    await database.transaction(async (tx) => {
+      // Handle status change logic
+      if (updates.status && updates.status !== currentTodo.status) {
+        if (currentTodo.status === "active" && updates.status !== "active") {
+          // Moving out of active status - clear priority and shift down
+          if (currentTodo.priority !== null) {
+            await TodoService.shiftDownFromPriority(currentTodo.priority);
+          }
+
+          const [updated] = await tx
+            .update(todos)
+            .set({
+              priority: null, // Clear priority for non-active todos
+              status: updates.status,
+              title: updates.title ?? currentTodo.title,
+              description: updates.description ?? currentTodo.description,
+              due_date: updates.due_date ?? currentTodo.due_date,
+              updated_at: now,
+            })
+            .where(eq(todos.id, id))
+            .returning();
+
+          result = mapTodoRowToTodo(updated);
+        } else if (
+          currentTodo.status !== "active" &&
+          updates.status === "active"
+        ) {
+          // Moving into active status - assign new priority
+          const nextPriority = await TodoService.getNextActivePriority();
+
+          const [updated] = await tx
+            .update(todos)
+            .set({
+              priority: nextPriority,
+              status: updates.status,
+              title: updates.title ?? currentTodo.title,
+              description: updates.description ?? currentTodo.description,
+              due_date: updates.due_date ?? currentTodo.due_date,
+              updated_at: now,
+            })
+            .where(eq(todos.id, id))
+            .returning();
+
+          result = mapTodoRowToTodo(updated);
+        } else {
+          // Status change within non-active statuses
+          const [updated] = await tx
+            .update(todos)
+            .set({
+              status: updates.status,
+              title: updates.title ?? currentTodo.title,
+              description: updates.description ?? currentTodo.description,
+              due_date: updates.due_date ?? currentTodo.due_date,
+              updated_at: now,
+            })
+            .where(eq(todos.id, id))
+            .returning();
+
+          result = mapTodoRowToTodo(updated);
+        }
+      } else {
+        // No status change - simple update
+        const [updated] = await tx
+          .update(todos)
+          .set({
+            title: updates.title ?? currentTodo.title,
+            description: updates.description ?? currentTodo.description,
+            due_date: updates.due_date ?? currentTodo.due_date,
+            updated_at: now,
+          })
+          .where(eq(todos.id, id))
+          .returning();
+
+        result = mapTodoRowToTodo(updated);
+      }
+    });
+
+    return result;
+  }
+
+  static async deleteTodo(id: number): Promise<boolean> {
+    const database = await db();
+
+    let success = false;
+
+    await database.transaction(async (tx) => {
+      // Get the todo first to check if we need to reindex
+      const todo = await TodoService.getTodoById(id);
+      if (!todo) return;
+
+      // Delete the todo
+      const result = await tx.delete(todos).where(eq(todos.id, id));
+
+      // If it was an active todo, shift down priorities
+      if (todo.status === "active" && todo.priority !== null) {
+        await TodoService.shiftDownFromPriority(todo.priority);
       }
 
-      // Update the todo with new priority/status and other fields
-      const [result] = await database
-        .update(todos)
-        .set({
-          priority: newPriority,
-          status: newStatus,
-          title: input.title ?? currentTodo.title,
-          description: input.description ?? currentTodo.description,
-          due_date: input.due_date ?? currentTodo.due_date,
-          updated_at: now,
-        })
-        .where(
-          and(
-            eq(todos.priority, input.priority),
-            eq(todos.status, input.status)
-          )
-        )
-        .returning();
+      success = result.changes > 0;
+    });
 
-      return result ? mapTodoRowToTodo(result) : null;
-    } else {
-      // Not changing priority or status - just update other fields
-      const [result] = await database
-        .update(todos)
-        .set({
-          title: input.title ?? currentTodo.title,
-          description: input.description ?? currentTodo.description,
-          due_date: input.due_date ?? currentTodo.due_date,
-          updated_at: now,
-        })
-        .where(
-          and(
-            eq(todos.priority, input.priority),
-            eq(todos.status, input.status)
-          )
-        )
-        .returning();
-
-      return result ? mapTodoRowToTodo(result) : null;
-    }
+    return success;
   }
 
-  static async deleteTodo(
-    priority: number,
-    status: TodoStatus
-  ): Promise<boolean> {
-    const database = await db();
-    const result = await database
-      .delete(todos)
-      .where(and(eq(todos.priority, priority), eq(todos.status, status)));
-
-    return result.changes > 0;
-  }
-
-  static async toggleTodo(
-    priority: number,
-    status: TodoStatus
-  ): Promise<Todo | null> {
+  static async toggleTodo(id: number): Promise<Todo | null> {
     // First get the current state
-    const current = await TodoService.getTodoByIdentifier(priority, status);
+    const current = await TodoService.getTodoById(id);
     if (!current) return null;
 
     // Toggle between active and completed
     const newStatus: TodoStatus =
       current.status === "completed" ? "active" : "completed";
-    return TodoService.updateTodo({
-      priority,
-      status,
-      newStatus,
-    });
+    return TodoService.updateTodo(id, { status: newStatus });
   }
 
   static async getActiveTodos(): Promise<Todo[]> {
@@ -196,7 +232,7 @@ export class TodoService {
       .select()
       .from(todos)
       .where(eq(todos.status, "active"))
-      .orderBy(asc(todos.priority));
+      .orderBy(asc(todos.priority), asc(todos.id));
 
     return rows.map(mapTodoRowToTodo);
   }
@@ -207,7 +243,7 @@ export class TodoService {
       .select()
       .from(todos)
       .where(eq(todos.status, "completed"))
-      .orderBy(asc(todos.priority));
+      .orderBy(asc(todos.id)); // Non-active todos ordered by creation (id)
 
     return rows.map(mapTodoRowToTodo);
   }
@@ -218,7 +254,7 @@ export class TodoService {
       .select()
       .from(todos)
       .where(eq(todos.status, "archived"))
-      .orderBy(asc(todos.priority));
+      .orderBy(asc(todos.id)); // Non-active todos ordered by creation (id)
 
     return rows.map(mapTodoRowToTodo);
   }
@@ -229,7 +265,9 @@ export class TodoService {
       .select()
       .from(todos)
       .where(eq(todos.status, status))
-      .orderBy(asc(todos.priority));
+      .orderBy(
+        status === "active" ? asc(todos.priority) : asc(todos.id) // Active todos by priority, others by creation order
+      );
 
     return rows.map(mapTodoRowToTodo);
   }

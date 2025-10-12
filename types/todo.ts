@@ -1,35 +1,35 @@
-export interface Todo {
-  priority: number;
+export interface BaseTodo {
+  id: number;
   title: string;
   description?: string;
-  status: TodoStatus;
   due_date?: string; // ISO date string
   created_at: string;
   updated_at: string;
 }
 
+export interface ActiveTodo extends BaseTodo {
+  priority: number; // Required for active todos
+  status: "active";
+}
+
+export interface NonActiveTodo extends BaseTodo {
+  priority: null; // Always null for non-active todos
+  status: "completed" | "archived";
+}
+
+export type Todo = ActiveTodo | NonActiveTodo;
+
 export type TodoStatus = "active" | "completed" | "archived";
 
 export interface TodoIdentifier {
-  priority: number;
-  status: TodoStatus;
+  id: number;
 }
 
 export interface CreateTodoInput {
   title: string;
   description?: string;
   due_date?: string;
-  priority: number; // Required - specifies the exact position/priority of the todo
-}
-
-export interface UpdateTodoInput {
-  priority: number; // Which todo priority to update
-  status: TodoStatus; // Which todo status to update (composite key)
-  newPriority?: number; // Optional new priority to move the todo to
-  title?: string;
-  description?: string;
-  newStatus?: TodoStatus; // Optional new status to change the todo to
-  due_date?: string;
+  // Priority is auto-assigned for new active todos
 }
 
 export const STATUS_LABELS = {

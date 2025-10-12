@@ -1,15 +1,18 @@
 import {
+  index,
   integer,
-  primaryKey,
   sqliteTable,
   text,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
+import { eq } from "drizzle-orm";
 import type { TodoStatus } from "../types/todo";
 
 export const todos = sqliteTable(
   "todos",
   {
-    priority: integer("priority").notNull(),
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    priority: integer("priority"), // Nullable for non-active todos
     title: text("title").notNull(),
     description: text("description"),
     status: text("status").$type<TodoStatus>().default("active").notNull(),
@@ -18,7 +21,12 @@ export const todos = sqliteTable(
     updated_at: text("updated_at").notNull(),
   },
   (table) => ({
-    compositePk: primaryKey({ columns: [table.priority, table.status] }),
+    // Unique priority constraint only for active todos
+    activePriorityIdx: uniqueIndex("active_priority_idx")
+      .on(table.priority)
+      .where(table.status.eq("active")),
+    // General index for priority ordering
+    priorityIdx: index("priority_idx").on(table.priority),
   })
 );
 
