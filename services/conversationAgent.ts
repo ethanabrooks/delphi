@@ -1,4 +1,5 @@
 import OpenAIClient, { type ChatCompletionMessage } from "./openaiClient";
+import { platformTodoService } from "./platformTodoService";
 import { executeTodoFunction, TODO_TOOLS } from "./todoTools";
 
 export interface ConversationState {
@@ -14,35 +15,72 @@ export class ConversationAgent {
     this.client = apiKey ? new OpenAIClient(apiKey) : null;
     this.state = {
       conversationId: undefined,
-      messages: [
-        {
-          role: "system",
-          content: `You are a helpful voice assistant that can manage todo items. You have access to a comprehensive todo management system.
-
-You can:
-- Create, read, and update todos
-- Mark todos as completed or incomplete
-- Filter todos by priority level (1=low, 2=medium, 3=high)
-- Search and organize todos
-
-When users ask about their todos or want to manage tasks, use the available functions to interact with their todo database. Always be conversational and helpful.
-
-For example:
-- "Add a todo to buy groceries" → use create_todo
-- "Show me my incomplete tasks" → use get_incomplete_todos
-- "Mark the first todo as done" → use get_all_todos first, then toggle_todo with the appropriate ID
-- "What are my high priority tasks?" → use get_todos_by_priority with priority 3
-
-Keep responses conversational and concise since this is a voice interface.`,
-        },
-      ],
+      messages: [],
     };
+  }
+
+  private async buildSystemPrompt(): Promise<string> {
+    let activeTodosContext = "";
+
+    try {
+      const activeTodos = await platformTodoService.getActiveTodos();
+      if (activeTodos.length > 0) {
+        activeTodosContext = `\n\nCurrent Active Todos:
+${activeTodos.map((todo) => `- Priority ${todo.priority}: "${todo.title}"${todo.description ? ` (${todo.description})` : ""}${todo.due_date ? ` - Due: ${todo.due_date}` : ""}`).join("\n")}`;
+      } else {
+        activeTodosContext = "\n\nCurrent Active Todos: None";
+      }
+    } catch (_error) {
+      activeTodosContext = "\n\nCurrent Active Todos: Unable to load";
+    }
+
+    return `You are a helpful voice assistant that can manage todo items. You have access to a todo management system with the following functions: create_todo, update_todo, and toggle_todo.
+
+IMPORTANT: You can see the complete list of active todos below. If a user tries to create a todo that already exists (similar or identical title), notify them that the todo already exists instead of creating a duplicate.
+
+Available Functions:
+- create_todo: Create a new todo item (check for duplicates first!)
+- update_todo: Update an existing todo by priority number
+- toggle_todo: Mark a todo as completed/active by priority number
+
+${activeTodosContext}
+
+When users ask about their todos or want to manage tasks, you can see all their active todos above. Use the available functions to help them manage tasks. Always be conversational and helpful.
+
+Examples:
+- "Add a todo to buy groceries" → Check if groceries todo exists first, then use create_todo if unique
+- "Mark priority 5 as done" → use toggle_todo with priority 5
+- "Update the first todo" → use update_todo with the priority number of the first todo shown above
+
+Keep responses conversational and concise since this is a voice interface.`;
+  }
+
+  private async ensureSystemMessage(): Promise<void> {
+    const systemPrompt = await this.buildSystemPrompt();
+
+    // Update or add system message as the first message
+    if (this.state.messages.length === 0) {
+      this.state.messages.push({
+        role: "system",
+        content: systemPrompt,
+      });
+    } else if (this.state.messages[0].role === "system") {
+      this.state.messages[0].content = systemPrompt;
+    } else {
+      this.state.messages.unshift({
+        role: "system",
+        content: systemPrompt,
+      });
+    }
   }
 
   async processMessage(userMessage: string): Promise<string> {
     if (!this.client) {
       return "I'm running in demo mode. Please add your OpenAI API key for full todo management functionality.";
     }
+
+    // Ensure system message is up to date with current active todos
+    await this.ensureSystemMessage();
 
     // Add user message to conversation
     this.state.messages.push({
@@ -189,8 +227,9 @@ Keep responses conversational and concise since this is a voice interface.`,
     return this.state.conversationId;
   }
 
-  clearConversation(): void {
+  async clearConversation(): Promise<void> {
     this.state.conversationId = undefined;
-    this.state.messages = [this.state.messages[0]]; // Keep system message
+    this.state.messages = [];
+    // System message will be rebuilt on next processMessage call
   }
 }

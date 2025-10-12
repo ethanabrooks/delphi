@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { TodoStatus } from "../types/todo";
 import type { Tool } from "./openaiClient";
 import { platformTodoService } from "./platformTodoService";
 
@@ -21,39 +20,7 @@ const todoPrioritySchema = z.object({
   priority: z.number(),
 });
 
-const statusSchema = z.object({
-  status: z.enum(["active", "completed", "archived"]),
-});
-
 export const TODO_TOOLS: Tool[] = [
-  {
-    type: "function",
-    function: {
-      name: "get_all_todos",
-      description: "Get all todos from the database",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_todo_by_priority",
-      description: "Get a specific todo by its priority",
-      parameters: {
-        type: "object",
-        properties: {
-          priority: {
-            type: "number",
-            description: "The priority of the todo to retrieve",
-          },
-        },
-        required: ["priority"],
-      },
-    },
-  },
   {
     type: "function",
     function: {
@@ -125,69 +92,6 @@ export const TODO_TOOLS: Tool[] = [
       },
     },
   },
-  {
-    type: "function",
-    function: {
-      name: "get_active_todos",
-      description: "Get all active todos",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_completed_todos",
-      description: "Get all completed todos",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_todos_by_status",
-      description: "Get todos filtered by status",
-      parameters: {
-        type: "object",
-        properties: {
-          status: {
-            type: "string",
-            description:
-              "Status to filter by: 'active', 'completed', or 'archived'",
-            enum: ["active", "completed", "archived"],
-          },
-        },
-        required: ["status"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_active_todos",
-      description: "Get all active todos",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_archived_todos",
-      description: "Get all archived todos",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
-    },
-  },
 ];
 
 export async function executeTodoFunction(
@@ -204,22 +108,6 @@ export async function executeTodoFunction(
 
   try {
     switch (name) {
-      case "get_all_todos": {
-        const allTodos = await platformTodoService.getAllTodos();
-        return JSON.stringify(allTodos);
-      }
-
-      case "get_todo_by_priority": {
-        const priorityResult = todoPrioritySchema.safeParse(parsedArgs);
-        if (!priorityResult.success) {
-          return JSON.stringify({ error: "Invalid priority parameter" });
-        }
-        const todo = await platformTodoService.getTodoByPriority(
-          priorityResult.data.priority
-        );
-        return JSON.stringify(todo);
-      }
-
       case "create_todo": {
         const createResult = createTodoSchema.safeParse(parsedArgs);
         if (!createResult.success) {
@@ -228,6 +116,22 @@ export async function executeTodoFunction(
             details: createResult.error.issues,
           });
         }
+
+        // Check for duplicate todos before creating
+        const activeTodos = await platformTodoService.getActiveTodos();
+        const newTitle = createResult.data.title.trim().toLowerCase();
+        const existingTodo = activeTodos.find(
+          (todo) => todo.title.trim().toLowerCase() === newTitle
+        );
+
+        if (existingTodo) {
+          return JSON.stringify({
+            duplicate: true,
+            message: `A todo with the title "${existingTodo.title}" already exists (Priority ${existingTodo.priority}). Please update the existing todo instead of creating a duplicate.`,
+            existingTodo: existingTodo,
+          });
+        }
+
         const newTodo = await platformTodoService.createTodo(createResult.data);
         return JSON.stringify(newTodo);
       }
@@ -255,32 +159,6 @@ export async function executeTodoFunction(
           toggleResult.data.priority
         );
         return JSON.stringify(toggledTodo);
-      }
-
-      case "get_active_todos": {
-        const activeTodos = await platformTodoService.getActiveTodos();
-        return JSON.stringify(activeTodos);
-      }
-
-      case "get_completed_todos": {
-        const completedTodos = await platformTodoService.getCompletedTodos();
-        return JSON.stringify(completedTodos);
-      }
-
-      case "get_todos_by_status": {
-        const statusResult = statusSchema.safeParse(parsedArgs);
-        if (!statusResult.success) {
-          return JSON.stringify({ error: "Invalid status parameter" });
-        }
-        const statusTodos = await platformTodoService.getTodosByStatus(
-          statusResult.data.status as TodoStatus
-        );
-        return JSON.stringify(statusTodos);
-      }
-
-      case "get_archived_todos": {
-        const archivedTodos = await platformTodoService.getArchivedTodos();
-        return JSON.stringify(archivedTodos);
       }
 
       default:
