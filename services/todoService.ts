@@ -1,4 +1,4 @@
-import { asc, eq, gte } from "drizzle-orm";
+import { and, asc, eq, gte } from "drizzle-orm";
 import { db, mapTodoRowToTodo } from "../db/database";
 import { todos } from "../db/schema";
 import type {
@@ -20,27 +20,33 @@ export class TodoService {
     return rows.map(mapTodoRowToTodo);
   }
 
-  static async getTodoByPriority(priority: number): Promise<Todo | null> {
+  static async getTodoByIdentifier(
+    priority: number,
+    status: TodoStatus
+  ): Promise<Todo | null> {
     const database = await db();
     const rows = await database
       .select()
       .from(todos)
-      .where(eq(todos.priority, priority))
+      .where(and(eq(todos.priority, priority), eq(todos.status, status)))
       .limit(1);
 
     return rows.length > 0 ? mapTodoRowToTodo(rows[0]) : null;
   }
 
   private static async bumpTodosFromPriority(
-    fromPriority: number
+    fromPriority: number,
+    withinStatus: TodoStatus
   ): Promise<void> {
     const database = await db();
 
-    // Get all todos with priority >= fromPriority, ordered by priority
+    // Get all todos with priority >= fromPriority in the same status, ordered by priority
     const todosToUpdate = await database
       .select()
       .from(todos)
-      .where(gte(todos.priority, fromPriority))
+      .where(
+        and(gte(todos.priority, fromPriority), eq(todos.status, withinStatus))
+      )
       .orderBy(asc(todos.priority));
 
     // Update each todo's priority by incrementing it by 1
@@ -51,7 +57,9 @@ export class TodoService {
           priority: todo.priority + 1,
           updated_at: new Date().toISOString(),
         })
-        .where(eq(todos.priority, todo.priority));
+        .where(
+          and(eq(todos.priority, todo.priority), eq(todos.status, todo.status))
+        );
     }
   }
 
@@ -61,9 +69,10 @@ export class TodoService {
 
     // Priority is now required, so use it directly
     const targetPriority = input.priority;
+    const targetStatus: TodoStatus = "active";
 
-    // Check if priority already exists and bump if needed
-    await TodoService.bumpTodosFromPriority(targetPriority);
+    // Check if priority already exists within the active status and bump if needed
+    await TodoService.bumpTodosFromPriority(targetPriority, targetStatus);
 
     const [result] = await database
       .insert(todos)
@@ -71,7 +80,7 @@ export class TodoService {
         priority: targetPriority,
         title: input.title,
         description: input.description,
-        status: "active",
+        status: targetStatus,
         due_date: input.due_date,
         created_at: now,
         updated_at: now,
@@ -86,62 +95,89 @@ export class TodoService {
     const now = new Date().toISOString();
 
     // First, get the current todo to check if it exists
-    const currentTodo = await TodoService.getTodoByPriority(input.priority);
+    const currentTodo = await TodoService.getTodoByIdentifier(
+      input.priority,
+      input.status
+    );
     if (!currentTodo) return null;
 
-    // Check if we're changing the priority
-    if (
-      input.newPriority !== undefined &&
-      input.newPriority !== input.priority
-    ) {
-      // We're changing priority - handle bumping
-      await TodoService.bumpTodosFromPriority(input.newPriority);
+    const newPriority = input.newPriority ?? input.priority;
+    const newStatus = input.newStatus ?? input.status;
 
-      // Update the todo with new priority and other fields
+    // Check if we're changing the priority or status
+    if (
+      (input.newPriority !== undefined &&
+        input.newPriority !== input.priority) ||
+      (input.newStatus !== undefined && input.newStatus !== input.status)
+    ) {
+      // We're changing priority or status - handle bumping in target status
+      if (
+        input.newPriority !== undefined &&
+        input.newPriority !== input.priority
+      ) {
+        await TodoService.bumpTodosFromPriority(newPriority, newStatus);
+      }
+
+      // Update the todo with new priority/status and other fields
       const [result] = await database
         .update(todos)
         .set({
-          priority: input.newPriority,
+          priority: newPriority,
+          status: newStatus,
           title: input.title ?? currentTodo.title,
           description: input.description ?? currentTodo.description,
-          status: input.status ?? currentTodo.status,
           due_date: input.due_date ?? currentTodo.due_date,
           updated_at: now,
         })
-        .where(eq(todos.priority, input.priority))
+        .where(
+          and(
+            eq(todos.priority, input.priority),
+            eq(todos.status, input.status)
+          )
+        )
         .returning();
 
       return result ? mapTodoRowToTodo(result) : null;
     } else {
-      // Not changing priority - just update other fields
+      // Not changing priority or status - just update other fields
       const [result] = await database
         .update(todos)
         .set({
           title: input.title ?? currentTodo.title,
           description: input.description ?? currentTodo.description,
-          status: input.status ?? currentTodo.status,
           due_date: input.due_date ?? currentTodo.due_date,
           updated_at: now,
         })
-        .where(eq(todos.priority, input.priority))
+        .where(
+          and(
+            eq(todos.priority, input.priority),
+            eq(todos.status, input.status)
+          )
+        )
         .returning();
 
       return result ? mapTodoRowToTodo(result) : null;
     }
   }
 
-  static async deleteTodo(priority: number): Promise<boolean> {
+  static async deleteTodo(
+    priority: number,
+    status: TodoStatus
+  ): Promise<boolean> {
     const database = await db();
     const result = await database
       .delete(todos)
-      .where(eq(todos.priority, priority));
+      .where(and(eq(todos.priority, priority), eq(todos.status, status)));
 
     return result.changes > 0;
   }
 
-  static async toggleTodo(priority: number): Promise<Todo | null> {
+  static async toggleTodo(
+    priority: number,
+    status: TodoStatus
+  ): Promise<Todo | null> {
     // First get the current state
-    const current = await TodoService.getTodoByPriority(priority);
+    const current = await TodoService.getTodoByIdentifier(priority, status);
     if (!current) return null;
 
     // Toggle between active and completed
@@ -149,7 +185,8 @@ export class TodoService {
       current.status === "completed" ? "active" : "completed";
     return TodoService.updateTodo({
       priority,
-      status: newStatus,
+      status,
+      newStatus,
     });
   }
 

@@ -71,17 +71,17 @@ describe("useTodosManager", () => {
     const hookResult = renderHookComponent();
     await waitFor(() => expect(hookResult.current?.isLoading).toBe(false));
 
-    const todoPriority = hookResult.current?.todos[0].priority;
-    expect(todoPriority).toBeDefined();
+    const todo = hookResult.current?.todos[0];
+    expect(todo?.priority).toBeDefined();
 
     await act(async () => {
-      if (todoPriority) {
-        await hookResult.current?.toggleTodo(todoPriority);
+      if (todo) {
+        await hookResult.current?.toggleTodo(todo.priority, todo.status);
       }
     });
 
     const updatedTodo = hookResult.current?.todos.find(
-      (todo) => todo.priority === todoPriority
+      (t) => t.priority === todo?.priority && t.status === "completed"
     );
     expect(updatedTodo?.status).toBe("completed");
   });

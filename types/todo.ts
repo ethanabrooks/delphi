@@ -10,6 +10,11 @@ export interface Todo {
 
 export type TodoStatus = "active" | "completed" | "archived";
 
+export interface TodoIdentifier {
+  priority: number;
+  status: TodoStatus;
+}
+
 export interface CreateTodoInput {
   title: string;
   description?: string;
@@ -18,11 +23,12 @@ export interface CreateTodoInput {
 }
 
 export interface UpdateTodoInput {
-  priority: number; // Which todo to update (current priority)
+  priority: number; // Which todo priority to update
+  status: TodoStatus; // Which todo status to update (composite key)
   newPriority?: number; // Optional new priority to move the todo to
   title?: string;
   description?: string;
-  status?: TodoStatus;
+  newStatus?: TodoStatus; // Optional new status to change the todo to
   due_date?: string;
 }
 

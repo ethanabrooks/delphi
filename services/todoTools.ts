@@ -11,15 +11,17 @@ const createTodoSchema = z.object({
 
 const updateTodoSchema = z.object({
   priority: z.number(),
+  status: z.enum(["active", "completed", "archived"]),
   newPriority: z.number().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
-  status: z.enum(["active", "completed", "archived"]).optional(),
+  newStatus: z.enum(["active", "completed", "archived"]).optional(),
   due_date: z.string().optional(),
 });
 
-const todoPrioritySchema = z.object({
+const todoIdentifierSchema = z.object({
   priority: z.number(),
+  status: z.enum(["active", "completed", "archived"]),
 });
 
 export const TODO_TOOLS: Tool[] = [
@@ -55,28 +57,36 @@ export const TODO_TOOLS: Tool[] = [
     type: "function",
     function: {
       name: "update_todo",
-      description: "Update an existing todo item",
+      description:
+        "Update an existing todo item. Requires both priority and status to identify the todo to update.",
       parameters: {
         type: "object",
         properties: {
           priority: {
             type: "number",
-            description: "The priority of the todo to update",
+            description:
+              "The priority of the todo to update (part of composite identifier)",
+          },
+          status: {
+            type: "string",
+            description:
+              "The current status of the todo to update (part of composite identifier): 'active', 'completed', or 'archived'",
+            enum: ["active", "completed", "archived"],
           },
           newPriority: {
             type: "number",
             description:
-              "New priority to move the todo to (optional). If provided, other todos will be bumped down to maintain ordering.",
+              "New priority to move the todo to (optional). If provided, other todos in the target status will be bumped down to maintain ordering.",
           },
           title: { type: "string", description: "New title for the todo" },
           description: {
             type: "string",
             description: "New description for the todo",
           },
-          status: {
+          newStatus: {
             type: "string",
             description:
-              "Status of the todo: 'active', 'completed', or 'archived'",
+              "New status for the todo: 'active', 'completed', or 'archived'",
             enum: ["active", "completed", "archived"],
           },
           due_date: {
@@ -84,7 +94,7 @@ export const TODO_TOOLS: Tool[] = [
             description: "New due date in ISO format",
           },
         },
-        required: ["priority"],
+        required: ["priority", "status"],
       },
     },
   },
@@ -92,16 +102,24 @@ export const TODO_TOOLS: Tool[] = [
     type: "function",
     function: {
       name: "toggle_todo",
-      description: "Toggle the completed status of a todo",
+      description:
+        "Toggle the completed status of a todo. Requires both priority and status to identify the todo.",
       parameters: {
         type: "object",
         properties: {
           priority: {
             type: "number",
-            description: "The priority of the todo to toggle",
+            description:
+              "The priority of the todo to toggle (part of composite identifier)",
+          },
+          status: {
+            type: "string",
+            description:
+              "The current status of the todo to toggle (part of composite identifier): 'active', 'completed', or 'archived'",
+            enum: ["active", "completed", "archived"],
           },
         },
-        required: ["priority"],
+        required: ["priority", "status"],
       },
     },
   },
@@ -164,12 +182,16 @@ export async function executeTodoFunction(
       }
 
       case "toggle_todo": {
-        const toggleResult = todoPrioritySchema.safeParse(parsedArgs);
+        const toggleResult = todoIdentifierSchema.safeParse(parsedArgs);
         if (!toggleResult.success) {
-          return JSON.stringify({ error: "Invalid priority parameter" });
+          return JSON.stringify({
+            error: "Invalid parameters - priority and status required",
+            details: toggleResult.error.issues,
+          });
         }
         const toggledTodo = await platformTodoService.toggleTodo(
-          toggleResult.data.priority
+          toggleResult.data.priority,
+          toggleResult.data.status
         );
         return JSON.stringify(toggledTodo);
       }

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Alert } from "react-native";
 import { Button, Card, Input, ScrollView, Text, XStack, YStack } from "tamagui";
 import useTodosManager from "../hooks/useTodosManager";
-import { STATUS_LABELS } from "../types/todo";
+import { STATUS_LABELS, type TodoStatus } from "../types/todo";
 import { getNextHighestPriority } from "../utils/priorityUtils";
 
 // Removed all styled components - using Tamagui components directly
@@ -19,8 +19,8 @@ export default function TodoList() {
       return;
     }
 
-    // Calculate the next highest priority (lowest number available)
-    const priority = getNextHighestPriority(todos);
+    // Calculate the next highest priority (lowest number available) for active todos
+    const priority = getNextHighestPriority(todos, "active");
 
     await addTodo({
       title: newTodo.trim(),
@@ -30,18 +30,25 @@ export default function TodoList() {
     setNewTodo("");
   };
 
-  const handleToggleTodo = async (todoPriority: number) => {
-    await toggleTodo(todoPriority);
+  const handleToggleTodo = async (
+    todoPriority: number,
+    todoStatus: TodoStatus
+  ) => {
+    await toggleTodo(todoPriority, todoStatus);
   };
 
-  const handleDeleteTodo = (todoPriority: number, title: string) => {
+  const handleDeleteTodo = (
+    todoPriority: number,
+    todoStatus: TodoStatus,
+    title: string
+  ) => {
     Alert.alert("Delete Todo", `Are you sure you want to delete "${title}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          await deleteTodo(todoPriority);
+          await deleteTodo(todoPriority, todoStatus);
         },
       },
     ]);
@@ -134,7 +141,7 @@ export default function TodoList() {
               <XStack justifyContent="space-between" alignItems="flex-start">
                 <YStack flex={1} marginRight="$3">
                   <Button
-                    onPress={() => handleToggleTodo(todo.priority)}
+                    onPress={() => handleToggleTodo(todo.priority, todo.status)}
                     unstyled
                     pressStyle={{ opacity: 0.7 }}
                   >
@@ -177,7 +184,7 @@ export default function TodoList() {
 
                 <XStack>
                   <Button
-                    onPress={() => handleToggleTodo(todo.priority)}
+                    onPress={() => handleToggleTodo(todo.priority, todo.status)}
                     theme={todo.status === "completed" ? "yellow" : "green"}
                     size="$3"
                     marginRight="$2"
@@ -186,7 +193,9 @@ export default function TodoList() {
                   </Button>
 
                   <Button
-                    onPress={() => handleDeleteTodo(todo.priority, todo.title)}
+                    onPress={() =>
+                      handleDeleteTodo(todo.priority, todo.status, todo.title)
+                    }
                     theme="red"
                     size="$3"
                   >

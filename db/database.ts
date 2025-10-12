@@ -32,13 +32,14 @@ export const initializeDatabase = async () => {
 
   await expoInstance.execAsync(`
     CREATE TABLE IF NOT EXISTS todos (
-      priority INTEGER PRIMARY KEY,
+      priority INTEGER NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
       status TEXT DEFAULT 'active' NOT NULL,
       due_date TEXT,
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (priority, status)
     );
   `);
 

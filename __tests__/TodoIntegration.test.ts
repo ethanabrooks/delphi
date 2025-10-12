@@ -55,6 +55,7 @@ describe("TodoService Integration Test", () => {
     // Update the todo
     const updatedTodo = await TodoService.updateTodo({
       priority: newTodo.priority,
+      status: newTodo.status,
       title: "Updated Todo",
     });
 
@@ -66,7 +67,10 @@ describe("TodoService Integration Test", () => {
     });
 
     // Toggle the todo
-    const toggledTodo = await TodoService.toggleTodo(newTodo.priority);
+    const toggledTodo = await TodoService.toggleTodo(
+      newTodo.priority,
+      newTodo.status
+    );
     expect(toggledTodo?.status).toBe("completed");
   });
 
@@ -82,7 +86,10 @@ describe("TodoService Integration Test", () => {
     expect(allTodos).toHaveLength(1);
 
     // Delete the todo
-    const success = await TodoService.deleteTodo(newTodo.priority);
+    const success = await TodoService.deleteTodo(
+      newTodo.priority,
+      newTodo.status
+    );
     expect(success).toBe(true);
 
     // Verify it's gone
@@ -100,7 +107,7 @@ describe("TodoService Integration Test", () => {
     await TodoService.createTodo({ title: "Todo 3", priority: 3 });
 
     // Complete one todo
-    await TodoService.toggleTodo(todo2.priority);
+    await TodoService.toggleTodo(todo2.priority, todo2.status);
 
     // Test filtering
     const active = await TodoService.getActiveTodos();
@@ -128,10 +135,11 @@ describe("TodoService Integration Test", () => {
     });
 
     // Change statuses
-    await TodoService.toggleTodo(todo2.priority); // Mark as completed
+    await TodoService.toggleTodo(todo2.priority, todo2.status); // Mark as completed
     await TodoService.updateTodo({
       priority: todo3.priority,
-      status: "archived",
+      status: todo3.status,
+      newStatus: "archived",
     });
 
     // Test filtering by status
@@ -161,10 +169,11 @@ describe("TodoService Integration Test", () => {
     });
 
     // Change statuses
-    await TodoService.toggleTodo(todo2.priority); // Mark as completed
+    await TodoService.toggleTodo(todo2.priority, todo2.status); // Mark as completed
     await TodoService.updateTodo({
       priority: todo3.priority,
-      status: "archived",
+      status: todo3.status,
+      newStatus: "archived",
     });
 
     // Get stats
@@ -194,6 +203,7 @@ describe("TodoService Integration Test", () => {
     // This should bump todo2 from priority 2 to priority 3
     await TodoService.updateTodo({
       priority: todo3.priority,
+      status: todo3.status,
       newPriority: 2,
     });
 
