@@ -48,8 +48,6 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 
   const startRecording = async () => {
     try {
-      setTranscript("");
-      setResponse("");
       await voiceService.startRecording();
       setIsRecording(true);
     } catch (error) {
