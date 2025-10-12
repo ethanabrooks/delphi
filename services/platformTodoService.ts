@@ -201,7 +201,7 @@ class WebTodoService {
     }
 
     const newStatus: TodoStatus =
-      todo.status === "completed" ? "active" : "completed";
+      todo.status === "active" ? "completed" : "active";
 
     // Create update payload with required ID
     const updateInput: PlatformUpdatePayload = {
@@ -338,7 +338,7 @@ class PlatformTodoServiceWrapper {
     const allTodos = await service.getAllTodos();
     const todo = allTodos.find((t) => t.id === id);
     if (!todo) return null;
-    const newStatus = todo.status === "completed" ? "active" : "completed";
+    const newStatus = todo.status === "active" ? "completed" : "active";
     const updateInput: UpdateTodoInput = { status: newStatus };
     if (newStatus === "active") {
       // When toggling back to active, we need to provide a priority
