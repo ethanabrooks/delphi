@@ -179,10 +179,6 @@ describe("Priority Reordering Without Gaps", () => {
       // If we reach here, gaps were fixed!
     } catch (_error) {
       // Expected failure due to gaps - document what we actually get
-      console.log(
-        "Current broken behavior - priorities:",
-        activeTodos.map((t) => `${t.title}(${t.priority})`)
-      );
 
       // Show the gap exists
       expect(activeTodos[0].priority).not.toBe(1); // There's a gap at 1

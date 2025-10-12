@@ -66,66 +66,20 @@ describe("Undo Functionality Issues", () => {
     });
     expect(archivedTodo?.status).toBe("archived");
 
-    console.log("=== INITIAL STATE ===");
-    const initialState = await platformTodoService.getAllTodos();
-    console.log(
-      "Active:",
-      initialState
-        .filter((t) => t.status === "active")
-        .map((t) => `${t.title}(${t.status})`)
-    );
-    console.log(
-      "Completed:",
-      initialState
-        .filter((t) => t.status === "completed")
-        .map((t) => `${t.title}(${t.status})`)
-    );
-    console.log(
-      "Archived:",
-      initialState
-        .filter((t) => t.status === "archived")
-        .map((t) => `${t.title}(${t.status})`)
-    );
+    const _initialState = await platformTodoService.getAllTodos();
 
     // ISSUE: Both completed and archived todos toggle to "active"
     // There's no way to undo just completion vs just archiving
 
-    console.log("=== TOGGLE COMPLETED TODO ===");
     const uncompletedTodo = await platformTodoService.toggleCompleted(todoA.id);
-    console.log(
-      `Toggling completed "${todoA.title}": ${completedTodo?.status} → ${uncompletedTodo?.status}`
-    );
 
-    console.log("=== TOGGLE ARCHIVED TODO ===");
     const unarchivedTodo = await platformTodoService.toggleArchived(todoB.id);
-    console.log(
-      `Toggling archived "${todoB.title}": ${archivedTodo?.status} → ${unarchivedTodo?.status}`
-    );
 
     // PROBLEM: Both become "active" - we can't distinguish the undo operations
     expect(uncompletedTodo?.status).toBe("active");
     expect(unarchivedTodo?.status).toBe("active");
 
-    console.log("=== FINAL STATE ===");
-    const finalState = await platformTodoService.getAllTodos();
-    console.log(
-      "Active:",
-      finalState
-        .filter((t) => t.status === "active")
-        .map((t) => `${t.title}(${t.status})`)
-    );
-    console.log(
-      "Completed:",
-      finalState
-        .filter((t) => t.status === "completed")
-        .map((t) => `${t.title}(${t.status})`)
-    );
-    console.log(
-      "Archived:",
-      finalState
-        .filter((t) => t.status === "archived")
-        .map((t) => `${t.title}(${t.status})`)
-    );
+    const _finalState = await platformTodoService.getAllTodos();
 
     // This demonstrates the issue: we lost the distinction between completed and archived
     // Both todos are now active, but we can't tell which one was originally completed vs archived
@@ -147,10 +101,6 @@ describe("Undo Functionality Issues", () => {
     // This works correctly for completed todos, but what about archived?
     const retriggered = await platformTodoService.toggleCompleted(todo.id);
     expect(retriggered?.status).toBe("completed");
-
-    console.log(
-      `Todo lifecycle: active → completed → active → ${retriggered?.status}`
-    );
   });
 
   test("archived todos cannot be properly restored to archived status", async () => {
@@ -161,19 +111,13 @@ describe("Undo Functionality Issues", () => {
       status: "archived",
     });
 
-    console.log("=== ARCHIVE UNDO ISSUE ===");
-
     // Toggle archived todo to active
     const reactivated = await platformTodoService.toggleArchived(todo.id);
     expect(reactivated?.status).toBe("active");
-    console.log(`Step 1: archived → ${reactivated?.status}`);
 
     // PROBLEM: Toggle again - should go back to "archived" but goes to "completed"!
     const retriggered = await platformTodoService.toggleArchived(todo.id);
     expect(retriggered?.status).toBe("archived"); // Now correct!
-    console.log(
-      `Step 2: active → ${retriggered?.status} (FIXED! Now correctly archived)`
-    );
 
     // This demonstrates the fix:
     // Now we have separate toggleCompleted and toggleArchived methods
@@ -199,7 +143,6 @@ describe("Undo Functionality Issues", () => {
     const active = todos.filter((t) => t.status === "active");
 
     expect(active).toHaveLength(2);
-    console.log("Both todos are active - original status information is lost");
 
     // If we toggle both again, they'll both go back to their appropriate states
     const toggledA = await platformTodoService.toggleCompleted(todoA.id);
@@ -207,9 +150,5 @@ describe("Undo Functionality Issues", () => {
 
     expect(toggledA?.status).toBe("completed"); // Correct
     expect(toggledB?.status).toBe("archived"); // Now correct! Should be "archived"
-
-    console.log(
-      "FIXED: Now todos can be properly toggled back to their correct states"
-    );
   });
 });
