@@ -140,7 +140,7 @@ Keep responses conversational and concise since this is a voice interface.`;
         const response = await this.client.createResponse({
           model: "gpt-4o",
           input: userMessage,
-          tools: TODO_TOOLS,
+          tools: _ALL_TOOLS,
           conversation: this.state.conversationId,
         });
 
@@ -155,7 +155,7 @@ Keep responses conversational and concise since this is a voice interface.`;
           const toolResults: string[] = [];
 
           for (const toolCall of response.tool_calls) {
-            const functionResult = await executeTodoFunction(
+            const functionResult = await _executeToolFunction(
               toolCall.function.name,
               toolCall.function.arguments
             );
@@ -243,7 +243,7 @@ Keep responses conversational and concise since this is a voice interface.`;
           model: "gpt-4o",
           messages: this.state.messages,
           maxTokens: 300,
-          tools: TODO_TOOLS,
+          tools: _ALL_TOOLS,
           tool_choice: "auto",
         });
 
@@ -258,7 +258,7 @@ Keep responses conversational and concise since this is a voice interface.`;
 
           // Execute each tool call
           for (const toolCall of response.tool_calls) {
-            const functionResult = await executeTodoFunction(
+            const functionResult = await _executeToolFunction(
               toolCall.function.name,
               toolCall.function.arguments
             );
