@@ -76,7 +76,7 @@ ${activeTodos
       activeTodosContext = "\n\nCurrent Active Todos: Unable to load";
     }
 
-    return `You are a helpful voice assistant that can manage todo items and analyze todo data. You have access to a todo management system with the following functions: create_todo, update_todo, toggle_todo, and SQL database querying capabilities.
+    return `You are a helpful voice assistant that can manage todo items and analyze todo data. You have access to a todo management system with the following functions: create_todo, update_todo, and SQL database querying capabilities.
 
 Current date and time: ${new Date().toLocaleString("en-US", {
       weekday: "long",
@@ -92,8 +92,7 @@ IMPORTANT: You can see the complete list of active todos below. If a user tries 
 
 Available Functions:
 - create_todo: Create a new todo item (check for duplicates first!)
-- update_todo: Update an existing todo by ID number
-- toggle_todo: Mark a todo as completed/active by ID number
+- update_todo: Update an existing todo by ID number (can change status to completed/active/archived)
 - execute_sql_query: Run custom SQL queries to analyze todo data, generate statistics, or perform advanced searches
 
 DATABASE SCHEMA:
@@ -113,7 +112,7 @@ When users ask about their todos or want to manage tasks, you can see all their 
 
 Examples:
 - "Add a todo to buy groceries" → Check if groceries todo exists first, then use create_todo if unique
-- "Mark ID 5 as done" → use toggle_todo with id 5
+- "Mark ID 5 as done" → use update_todo with id 5 and newStatus: "completed"
 - "Update the first active todo" → use update_todo with the ID of the first active todo shown above
 - "How many todos do I have by status?" → use execute_sql_query with "SELECT status, COUNT(*) as count FROM todos GROUP BY status"
 - "Show me todos created this week" → use execute_sql_query with date filtering

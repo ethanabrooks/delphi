@@ -18,10 +18,6 @@ const updateTodoSchema = z.object({
   due_date: z.string().optional(),
 });
 
-const todoIdentifierSchema = z.object({
-  id: z.number(),
-});
-
 export const TODO_TOOLS: Tool[] = [
   {
     type: "function",
@@ -83,24 +79,6 @@ export const TODO_TOOLS: Tool[] = [
           due_date: {
             type: "string",
             description: "New due date in ISO format",
-          },
-        },
-        required: ["id"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "toggle_todo",
-      description:
-        "Toggle the completed status of a todo. Requires the todo ID to identify the todo.",
-      parameters: {
-        type: "object",
-        properties: {
-          id: {
-            type: "number",
-            description: "The unique ID of the todo to toggle",
           },
         },
         required: ["id"],
@@ -173,34 +151,6 @@ export async function executeTodoFunction(
           priority: updateResult.data.newPriority,
         });
         return JSON.stringify(updatedTodo);
-      }
-
-      case "toggle_completed": {
-        const toggleResult = todoIdentifierSchema.safeParse(parsedArgs);
-        if (!toggleResult.success) {
-          return JSON.stringify({
-            error: "Invalid parameters - id required",
-            details: toggleResult.error.issues,
-          });
-        }
-        const toggledTodo = await platformTodoService.toggleCompleted(
-          toggleResult.data.id
-        );
-        return JSON.stringify(toggledTodo);
-      }
-
-      case "toggle_archived": {
-        const toggleResult = todoIdentifierSchema.safeParse(parsedArgs);
-        if (!toggleResult.success) {
-          return JSON.stringify({
-            error: "Invalid parameters - id required",
-            details: toggleResult.error.issues,
-          });
-        }
-        const toggledTodo = await platformTodoService.toggleArchived(
-          toggleResult.data.id
-        );
-        return JSON.stringify(toggledTodo);
       }
 
       default:
