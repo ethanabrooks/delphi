@@ -9,8 +9,8 @@ export const resetTestData = () => {
   nextId = 1;
 };
 
-// Mock TodoService that uses in-memory data but has same interface
-export const createTestTodoService = () => ({
+// Single shared instance for consistent test data
+const sharedTestTodoService = {
   async getAllTodos(): Promise<Todo[]> {
     return [...testTodos].sort(
       (a, b) =>
@@ -28,9 +28,7 @@ export const createTestTodoService = () => ({
       id: nextId++,
       title: input.title,
       description: input.description,
-      completed: false,
-      priority: input.priority || 1,
-      category: input.category,
+      status: "active",
       due_date: input.due_date,
       created_at: now,
       updated_at: now,
@@ -62,15 +60,16 @@ export const createTestTodoService = () => ({
     const todo = testTodos.find((t) => t.id === id);
     if (!todo) return null;
 
+    const newStatus = todo.status === "completed" ? "active" : "completed";
     return this.updateTodo({
       id,
-      completed: !todo.completed,
+      status: newStatus,
     });
   },
 
-  async getIncompleteTodos(): Promise<Todo[]> {
+  async getActiveTodos(): Promise<Todo[]> {
     return testTodos
-      .filter((todo) => !todo.completed)
+      .filter((todo) => todo.status === "active")
       .sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -79,16 +78,25 @@ export const createTestTodoService = () => ({
 
   async getCompletedTodos(): Promise<Todo[]> {
     return testTodos
-      .filter((todo) => todo.completed)
+      .filter((todo) => todo.status === "completed")
       .sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
   },
 
-  async getTodosByPriority(priority: number): Promise<Todo[]> {
+  async getArchivedTodos(): Promise<Todo[]> {
     return testTodos
-      .filter((todo) => todo.priority === priority)
+      .filter((todo) => todo.status === "archived")
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+  },
+
+  async getTodosByStatus(status: string): Promise<Todo[]> {
+    return testTodos
+      .filter((todo) => todo.status === status)
       .sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -101,19 +109,19 @@ export const createTestTodoService = () => ({
 
   async getTodoStats() {
     const total = testTodos.length;
-    const completed = testTodos.filter((t) => t.completed).length;
-    const pending = total - completed;
-    const highPriority = testTodos.filter(
-      (t) => t.priority === 3 && !t.completed
-    ).length;
+    const active = testTodos.filter((t) => t.status === "active").length;
+    const completed = testTodos.filter((t) => t.status === "completed").length;
+    const archived = testTodos.filter((t) => t.status === "archived").length;
 
-    return { total, completed, pending, highPriority };
+    return { total, active, completed, archived };
   },
-});
+};
+
+// Mock TodoService that uses in-memory data but has same interface
+export const createTestTodoService = () => sharedTestTodoService;
 
 export const mockTodoServiceForTesting = () => {
-  const testService = createTestTodoService();
   return {
-    TodoService: testService,
+    TodoService: sharedTestTodoService,
   };
 };

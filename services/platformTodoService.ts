@@ -1,7 +1,7 @@
 import type {
   CreateTodoInput,
-  Priority,
   Todo,
+  TodoStatus,
   UpdateTodoInput,
 } from "../types/todo";
 
@@ -45,9 +45,7 @@ class WebTodoService {
       id: Date.now(),
       title: input.title,
       description: input.description,
-      completed: false,
-      priority: input.priority ?? 1,
-      category: input.category,
+      status: "active",
       due_date: input.due_date,
       created_at: now,
       updated_at: now,
@@ -91,7 +89,9 @@ class WebTodoService {
       return null;
     }
 
-    return WebTodoService.updateTodo({ id, completed: !todo.completed });
+    const newStatus: TodoStatus =
+      todo.status === "completed" ? "active" : "completed";
+    return WebTodoService.updateTodo({ id, status: newStatus });
   }
 
   static async clearAllTodos(): Promise<void> {
@@ -103,33 +103,38 @@ class WebTodoService {
     return todos.find((todo) => todo.id === id) || null;
   }
 
-  static async getIncompleteTodos(): Promise<Todo[]> {
+  static async getActiveTodos(): Promise<Todo[]> {
     const todos = WebTodoService.read();
-    return todos.filter((todo) => !todo.completed);
+    return todos.filter((todo) => todo.status === "active");
   }
 
   static async getCompletedTodos(): Promise<Todo[]> {
     const todos = WebTodoService.read();
-    return todos.filter((todo) => todo.completed);
+    return todos.filter((todo) => todo.status === "completed");
   }
 
-  static async getTodosByPriority(priority: Priority): Promise<Todo[]> {
+  static async getArchivedTodos(): Promise<Todo[]> {
     const todos = WebTodoService.read();
-    return todos.filter((todo) => todo.priority === priority);
+    return todos.filter((todo) => todo.status === "archived");
+  }
+
+  static async getTodosByStatus(status: TodoStatus): Promise<Todo[]> {
+    const todos = WebTodoService.read();
+    return todos.filter((todo) => todo.status === status);
   }
 
   static async getTodoStats(): Promise<{
     total: number;
+    active: number;
     completed: number;
-    pending: number;
-    highPriority: number;
+    archived: number;
   }> {
     const todos = WebTodoService.read();
     return {
       total: todos.length,
-      completed: todos.filter((todo) => todo.completed).length,
-      pending: todos.filter((todo) => !todo.completed).length,
-      highPriority: todos.filter((todo) => todo.priority === 3).length,
+      active: todos.filter((todo) => todo.status === "active").length,
+      completed: todos.filter((todo) => todo.status === "completed").length,
+      archived: todos.filter((todo) => todo.status === "archived").length,
     };
   }
 }
@@ -202,12 +207,12 @@ class PlatformTodoServiceWrapper {
     return service.getTodoById(id);
   }
 
-  static async getIncompleteTodos(): Promise<Todo[]> {
+  static async getActiveTodos(): Promise<Todo[]> {
     if (isWebPlatform) {
-      return WebTodoService.getIncompleteTodos();
+      return WebTodoService.getActiveTodos();
     }
     const service = await getNativeService();
-    return service.getIncompleteTodos();
+    return service.getActiveTodos();
   }
 
   static async getCompletedTodos(): Promise<Todo[]> {
@@ -218,19 +223,27 @@ class PlatformTodoServiceWrapper {
     return service.getCompletedTodos();
   }
 
-  static async getTodosByPriority(priority: Priority): Promise<Todo[]> {
+  static async getArchivedTodos(): Promise<Todo[]> {
     if (isWebPlatform) {
-      return WebTodoService.getTodosByPriority(priority);
+      return WebTodoService.getArchivedTodos();
     }
     const service = await getNativeService();
-    return service.getTodosByPriority(priority);
+    return service.getArchivedTodos();
+  }
+
+  static async getTodosByStatus(status: TodoStatus): Promise<Todo[]> {
+    if (isWebPlatform) {
+      return WebTodoService.getTodosByStatus(status);
+    }
+    const service = await getNativeService();
+    return service.getTodosByStatus(status);
   }
 
   static async getTodoStats(): Promise<{
     total: number;
+    active: number;
     completed: number;
-    pending: number;
-    highPriority: number;
+    archived: number;
   }> {
     if (isWebPlatform) {
       return WebTodoService.getTodoStats();

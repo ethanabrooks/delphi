@@ -2,16 +2,15 @@ import { useState } from "react";
 import { Alert } from "react-native";
 import { Button, Card, Input, ScrollView, Text, XStack, YStack } from "tamagui";
 import useTodosManager from "../hooks/useTodosManager";
-import { PRIORITY_LABELS, type Priority } from "../types/todo";
+import { STATUS_LABELS } from "../types/todo";
 
 // Removed all styled components - using Tamagui components directly
 
 export default function TodoList() {
   const [newTodo, setNewTodo] = useState("");
-  const [selectedPriority, setSelectedPriority] = useState<Priority>(1);
   const { todos, stats, isLoading, error, addTodo, toggleTodo, deleteTodo } =
     useTodosManager();
-  const { total, completed, pending } = stats;
+  const { total, active, completed, archived } = stats;
 
   const handleAddTodo = async () => {
     if (!newTodo.trim()) {
@@ -21,11 +20,9 @@ export default function TodoList() {
 
     await addTodo({
       title: newTodo.trim(),
-      priority: selectedPriority,
     });
 
     setNewTodo("");
-    setSelectedPriority(1);
   };
 
   const handleToggleTodo = async (todoId: number) => {
@@ -99,26 +96,6 @@ export default function TodoList() {
           testID="todo-input"
         />
 
-        {/* Priority selection */}
-        <XStack marginBottom="$3" alignItems="center">
-          <Text color="$gray11" marginRight="$3">
-            Priority:
-          </Text>
-          {([1, 2, 3] as Priority[]).map((priority) => (
-            <Button
-              key={priority}
-              onPress={() => setSelectedPriority(priority)}
-              theme={selectedPriority === priority ? "blue" : "light"}
-              size="$2"
-              borderRadius="$10"
-              marginRight="$2"
-              testID={`priority-${priority}-button`}
-            >
-              {PRIORITY_LABELS[priority]}
-            </Button>
-          ))}
-        </XStack>
-
         <Button
           onPress={handleAddTodo}
           disabled={isLoading}
@@ -146,7 +123,7 @@ export default function TodoList() {
               backgroundColor="$background"
               padding="$4"
               marginBottom="$3"
-              opacity={todo.completed ? 0.6 : 1}
+              opacity={todo.status === "completed" ? 0.6 : 1}
               elevate
             >
               <XStack justifyContent="space-between" alignItems="flex-start">
@@ -160,9 +137,11 @@ export default function TodoList() {
                       fontSize="$5"
                       fontWeight="500"
                       textDecorationLine={
-                        todo.completed ? "line-through" : "none"
+                        todo.status === "completed" ? "line-through" : "none"
                       }
-                      color={todo.completed ? "$gray10" : "$gray12"}
+                      color={
+                        todo.status === "completed" ? "$gray10" : "$gray12"
+                      }
                     >
                       {todo.title}
                     </Text>
@@ -182,20 +161,8 @@ export default function TodoList() {
                       marginRight="$2"
                       disabled
                     >
-                      {PRIORITY_LABELS[todo.priority]}
+                      {STATUS_LABELS[todo.status]}
                     </Button>
-
-                    {todo.category && (
-                      <Button
-                        theme="blue"
-                        size="$1"
-                        borderRadius="$10"
-                        marginRight="$2"
-                        disabled
-                      >
-                        {todo.category}
-                      </Button>
-                    )}
 
                     <Text fontSize="$2" color="$gray10">
                       {formatDate(todo.created_at)}
@@ -206,11 +173,11 @@ export default function TodoList() {
                 <XStack>
                   <Button
                     onPress={() => handleToggleTodo(todo.id)}
-                    theme={todo.completed ? "yellow" : "green"}
+                    theme={todo.status === "completed" ? "yellow" : "green"}
                     size="$3"
                     marginRight="$2"
                   >
-                    {todo.completed ? "Undo" : "Done"}
+                    {todo.status === "completed" ? "Undo" : "Done"}
                   </Button>
 
                   <Button
@@ -231,7 +198,8 @@ export default function TodoList() {
       {total > 0 && (
         <Card backgroundColor="$gray3" padding="$3" marginTop="$4">
           <Text textAlign="center" color="$gray11">
-            {pending} of {total} remaining ({completed} completed)
+            {active} active, {completed} completed, {archived} archived ({total}{" "}
+            total)
           </Text>
         </Card>
       )}

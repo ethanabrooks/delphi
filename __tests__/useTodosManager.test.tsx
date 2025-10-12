@@ -16,7 +16,7 @@ type MockedModule = {
 jest.mock("../services/platformTodoService", () => {
   const { createTestTodoService } = require("../__test-utils__/testUtils");
   return {
-    isWebPlatform: false,
+    isWebPlatform: true, // Set to true to avoid database initialization
     platformTodoService: createTestTodoService(),
   } satisfies MockedModule;
 });
@@ -83,6 +83,6 @@ describe("useTodosManager", () => {
     const updatedTodo = hookResult.current?.todos.find(
       (todo) => todo.id === todoId
     );
-    expect(updatedTodo?.completed).toBe(true);
+    expect(updatedTodo?.status).toBe("completed");
   });
 });

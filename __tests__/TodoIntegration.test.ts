@@ -26,16 +26,12 @@ describe("TodoService Integration Test", () => {
     const newTodo = await TodoService.createTodo({
       title: "Test Todo",
       description: "Test Description",
-      priority: 2,
-      category: "Work",
     });
 
     expect(newTodo).toMatchObject({
       title: "Test Todo",
       description: "Test Description",
-      completed: false,
-      priority: 2,
-      category: "Work",
+      status: "active",
     });
     expect(newTodo.id).toBeDefined();
     expect(newTodo.created_at).toBeDefined();
@@ -58,20 +54,18 @@ describe("TodoService Integration Test", () => {
     const updatedTodo = await TodoService.updateTodo({
       id: newTodo.id,
       title: "Updated Todo",
-      priority: 3,
     });
 
     expect(updatedTodo).toMatchObject({
       id: newTodo.id,
       title: "Updated Todo",
       description: "Test Description",
-      completed: false,
-      priority: 3,
+      status: "active",
     });
 
     // Toggle the todo
     const toggledTodo = await TodoService.toggleTodo(newTodo.id);
-    expect(toggledTodo?.completed).toBe(true);
+    expect(toggledTodo?.status).toBe("completed");
   });
 
   test("should delete todos", async () => {
@@ -103,51 +97,54 @@ describe("TodoService Integration Test", () => {
     await TodoService.toggleTodo(todo2.id);
 
     // Test filtering
-    const incomplete = await TodoService.getIncompleteTodos();
+    const active = await TodoService.getActiveTodos();
     const completed = await TodoService.getCompletedTodos();
 
-    expect(incomplete).toHaveLength(2);
+    expect(active).toHaveLength(2);
     expect(completed).toHaveLength(1);
     expect(completed[0].title).toBe("Todo 2");
-    expect(completed[0].completed).toBe(true);
+    expect(completed[0].status).toBe("completed");
   });
 
-  test("should filter todos by priority", async () => {
-    // Create todos with different priorities
-    await TodoService.createTodo({ title: "Low Priority", priority: 1 });
-    await TodoService.createTodo({ title: "Medium Priority", priority: 2 });
-    await TodoService.createTodo({ title: "High Priority", priority: 3 });
-    await TodoService.createTodo({ title: "Another High", priority: 3 });
+  test("should filter todos by status", async () => {
+    // Create todos with different statuses
+    const _todo1 = await TodoService.createTodo({ title: "Active Todo" });
+    const todo2 = await TodoService.createTodo({ title: "To Complete" });
+    const todo3 = await TodoService.createTodo({ title: "To Archive" });
 
-    // Test filtering by priority
-    const highPriorityTodos = await TodoService.getTodosByPriority(3);
-    const mediumPriorityTodos = await TodoService.getTodosByPriority(2);
+    // Change statuses
+    await TodoService.toggleTodo(todo2.id); // Mark as completed
+    await TodoService.updateTodo({ id: todo3.id, status: "archived" });
 
-    expect(highPriorityTodos).toHaveLength(2);
-    expect(mediumPriorityTodos).toHaveLength(1);
-    expect(highPriorityTodos.every((todo) => todo.priority === 3)).toBe(true);
+    // Test filtering by status
+    const activeTodos = await TodoService.getTodosByStatus("active");
+    const completedTodos = await TodoService.getTodosByStatus("completed");
+    const archivedTodos = await TodoService.getTodosByStatus("archived");
+
+    expect(activeTodos).toHaveLength(1);
+    expect(completedTodos).toHaveLength(1);
+    expect(archivedTodos).toHaveLength(1);
+    expect(activeTodos.every((todo) => todo.status === "active")).toBe(true);
   });
 
   test("should get todo statistics", async () => {
     // Create test data
-    await TodoService.createTodo({ title: "Todo 1", priority: 3 });
-    const todo2 = await TodoService.createTodo({
-      title: "Todo 2",
-      priority: 2,
-    });
-    await TodoService.createTodo({ title: "Todo 3", priority: 3 });
+    const _todo1 = await TodoService.createTodo({ title: "Todo 1" });
+    const todo2 = await TodoService.createTodo({ title: "Todo 2" });
+    const todo3 = await TodoService.createTodo({ title: "Todo 3" });
 
-    // Complete one todo
-    await TodoService.toggleTodo(todo2.id);
+    // Change statuses
+    await TodoService.toggleTodo(todo2.id); // Mark as completed
+    await TodoService.updateTodo({ id: todo3.id, status: "archived" });
 
     // Get stats
     const stats = await TodoService.getTodoStats();
 
     expect(stats).toEqual({
       total: 3,
+      active: 1,
       completed: 1,
-      pending: 2,
-      highPriority: 2, // 2 high priority todos that are not completed
+      archived: 1,
     });
   });
 });

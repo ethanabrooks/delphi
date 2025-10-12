@@ -3,8 +3,8 @@ import { db, mapTodoRowToTodo } from "../db/database";
 import { todos } from "../db/schema";
 import type {
   CreateTodoInput,
-  Priority,
   Todo,
+  TodoStatus,
   UpdateTodoInput,
 } from "../types/todo";
 
@@ -40,9 +40,7 @@ export class TodoService {
       .values({
         title: input.title,
         description: input.description,
-        completed: false,
-        priority: input.priority || 1,
-        category: input.category,
+        status: "active",
         due_date: input.due_date,
         created_at: now,
         updated_at: now,
@@ -80,19 +78,21 @@ export class TodoService {
     const current = await TodoService.getTodoById(id);
     if (!current) return null;
 
-    // Toggle the completed state
+    // Toggle between active and completed
+    const newStatus: TodoStatus =
+      current.status === "completed" ? "active" : "completed";
     return TodoService.updateTodo({
       id,
-      completed: !current.completed,
+      status: newStatus,
     });
   }
 
-  static async getIncompleteTodos(): Promise<Todo[]> {
+  static async getActiveTodos(): Promise<Todo[]> {
     const database = await db();
     const rows = await database
       .select()
       .from(todos)
-      .where(eq(todos.completed, false))
+      .where(eq(todos.status, "active"))
       .orderBy(desc(todos.created_at));
 
     return rows.map(mapTodoRowToTodo);
@@ -103,18 +103,29 @@ export class TodoService {
     const rows = await database
       .select()
       .from(todos)
-      .where(eq(todos.completed, true))
+      .where(eq(todos.status, "completed"))
       .orderBy(desc(todos.created_at));
 
     return rows.map(mapTodoRowToTodo);
   }
 
-  static async getTodosByPriority(priority: Priority): Promise<Todo[]> {
+  static async getArchivedTodos(): Promise<Todo[]> {
     const database = await db();
     const rows = await database
       .select()
       .from(todos)
-      .where(eq(todos.priority, priority))
+      .where(eq(todos.status, "archived"))
+      .orderBy(desc(todos.created_at));
+
+    return rows.map(mapTodoRowToTodo);
+  }
+
+  static async getTodosByStatus(status: TodoStatus): Promise<Todo[]> {
+    const database = await db();
+    const rows = await database
+      .select()
+      .from(todos)
+      .where(eq(todos.status, status))
       .orderBy(desc(todos.created_at));
 
     return rows.map(mapTodoRowToTodo);
@@ -127,19 +138,17 @@ export class TodoService {
 
   static async getTodoStats(): Promise<{
     total: number;
+    active: number;
     completed: number;
-    pending: number;
-    highPriority: number;
+    archived: number;
   }> {
     const allTodos = await TodoService.getAllTodos();
 
     const total = allTodos.length;
-    const completed = allTodos.filter((t) => t.completed).length;
-    const pending = total - completed;
-    const highPriority = allTodos.filter(
-      (t) => t.priority === 3 && !t.completed
-    ).length;
+    const active = allTodos.filter((t) => t.status === "active").length;
+    const completed = allTodos.filter((t) => t.status === "completed").length;
+    const archived = allTodos.filter((t) => t.status === "archived").length;
 
-    return { total, completed, pending, highPriority };
+    return { total, active, completed, archived };
   }
 }

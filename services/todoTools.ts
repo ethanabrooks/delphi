@@ -1,13 +1,11 @@
 import { z } from "zod";
-import type { Priority } from "../types/todo";
+import type { TodoStatus } from "../types/todo";
 import type { Tool } from "./openaiClient";
 import { platformTodoService } from "./platformTodoService";
 
 const createTodoSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
-  priority: z.number().min(1).max(3).optional(),
-  category: z.string().optional(),
   due_date: z.string().optional(),
 });
 
@@ -15,9 +13,7 @@ const updateTodoSchema = z.object({
   id: z.number(),
   title: z.string().optional(),
   description: z.string().optional(),
-  completed: z.boolean().optional(),
-  priority: z.number().min(1).max(3).optional(),
-  category: z.string().optional(),
+  status: z.enum(["active", "completed", "archived"]).optional(),
   due_date: z.string().optional(),
 });
 
@@ -25,8 +21,8 @@ const todoIdSchema = z.object({
   id: z.number(),
 });
 
-const prioritySchema = z.object({
-  priority: z.number().min(1).max(3),
+const statusSchema = z.object({
+  status: z.enum(["active", "completed", "archived"]),
 });
 
 export const TODO_TOOLS: Tool[] = [
@@ -68,16 +64,6 @@ export const TODO_TOOLS: Tool[] = [
             type: "string",
             description: "Optional description of the todo",
           },
-          priority: {
-            type: "number",
-            description: "Priority level: 1 (low), 2 (medium), 3 (high)",
-            minimum: 1,
-            maximum: 3,
-          },
-          category: {
-            type: "string",
-            description: "Optional category for the todo",
-          },
           due_date: {
             type: "string",
             description: "Optional due date in ISO format",
@@ -101,19 +87,11 @@ export const TODO_TOOLS: Tool[] = [
             type: "string",
             description: "New description for the todo",
           },
-          completed: {
-            type: "boolean",
-            description: "Whether the todo is completed",
-          },
-          priority: {
-            type: "number",
-            description: "Priority level: 1 (low), 2 (medium), 3 (high)",
-            minimum: 1,
-            maximum: 3,
-          },
-          category: {
+          status: {
             type: "string",
-            description: "New category for the todo",
+            description:
+              "Status of the todo: 'active', 'completed', or 'archived'",
+            enum: ["active", "completed", "archived"],
           },
           due_date: {
             type: "string",
@@ -155,8 +133,8 @@ export const TODO_TOOLS: Tool[] = [
   {
     type: "function",
     function: {
-      name: "get_incomplete_todos",
-      description: "Get all incomplete todos",
+      name: "get_active_todos",
+      description: "Get all active todos",
       parameters: {
         type: "object",
         properties: {},
@@ -177,19 +155,41 @@ export const TODO_TOOLS: Tool[] = [
   {
     type: "function",
     function: {
-      name: "get_todos_by_priority",
-      description: "Get todos filtered by priority level",
+      name: "get_todos_by_status",
+      description: "Get todos filtered by status",
       parameters: {
         type: "object",
         properties: {
-          priority: {
-            type: "number",
-            description: "Priority level: 1 (low), 2 (medium), 3 (high)",
-            minimum: 1,
-            maximum: 3,
+          status: {
+            type: "string",
+            description:
+              "Status to filter by: 'active', 'completed', or 'archived'",
+            enum: ["active", "completed", "archived"],
           },
         },
-        required: ["priority"],
+        required: ["status"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_active_todos",
+      description: "Get all active todos",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_archived_todos",
+      description: "Get all archived todos",
+      parameters: {
+        type: "object",
+        properties: {},
       },
     },
   },
@@ -198,7 +198,7 @@ export const TODO_TOOLS: Tool[] = [
     function: {
       name: "get_todo_stats",
       description:
-        "Get statistics about todos (total, completed, pending, high priority)",
+        "Get statistics about todos (total, active, completed, archived)",
       parameters: {
         type: "object",
         properties: {},
@@ -254,10 +254,7 @@ export async function executeTodoFunction(
             details: createResult.error.issues,
           });
         }
-        const newTodo = await platformTodoService.createTodo({
-          ...createResult.data,
-          priority: createResult.data.priority as Priority,
-        });
+        const newTodo = await platformTodoService.createTodo(createResult.data);
         return JSON.stringify(newTodo);
       }
 
@@ -269,10 +266,9 @@ export async function executeTodoFunction(
             details: updateResult.error.issues,
           });
         }
-        const updatedTodo = await platformTodoService.updateTodo({
-          ...updateResult.data,
-          priority: updateResult.data.priority as Priority,
-        });
+        const updatedTodo = await platformTodoService.updateTodo(
+          updateResult.data
+        );
         return JSON.stringify(updatedTodo);
       }
 
@@ -298,9 +294,9 @@ export async function executeTodoFunction(
         return JSON.stringify(toggledTodo);
       }
 
-      case "get_incomplete_todos": {
-        const incompleteTodos = await platformTodoService.getIncompleteTodos();
-        return JSON.stringify(incompleteTodos);
+      case "get_active_todos": {
+        const activeTodos = await platformTodoService.getActiveTodos();
+        return JSON.stringify(activeTodos);
       }
 
       case "get_completed_todos": {
@@ -308,15 +304,20 @@ export async function executeTodoFunction(
         return JSON.stringify(completedTodos);
       }
 
-      case "get_todos_by_priority": {
-        const priorityResult = prioritySchema.safeParse(parsedArgs);
-        if (!priorityResult.success) {
-          return JSON.stringify({ error: "Invalid priority parameter" });
+      case "get_todos_by_status": {
+        const statusResult = statusSchema.safeParse(parsedArgs);
+        if (!statusResult.success) {
+          return JSON.stringify({ error: "Invalid status parameter" });
         }
-        const priorityTodos = await platformTodoService.getTodosByPriority(
-          priorityResult.data.priority as Priority
+        const statusTodos = await platformTodoService.getTodosByStatus(
+          statusResult.data.status as TodoStatus
         );
-        return JSON.stringify(priorityTodos);
+        return JSON.stringify(statusTodos);
+      }
+
+      case "get_archived_todos": {
+        const archivedTodos = await platformTodoService.getArchivedTodos();
+        return JSON.stringify(archivedTodos);
       }
 
       case "get_todo_stats": {

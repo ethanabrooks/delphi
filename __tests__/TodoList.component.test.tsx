@@ -12,7 +12,7 @@ const mockUseTodosManager = useTodosManager as jest.MockedFunction<
 
 const createHookReturn = (): UseTodosManagerResult => ({
   todos: [],
-  stats: { total: 0, completed: 0, pending: 0, highPriority: 0 },
+  stats: { total: 0, active: 0, completed: 0, archived: 0 },
   isLoading: false,
   error: null,
   lastMutation: null,
@@ -44,13 +44,6 @@ describe("TodoList Component - Tamagui Mock Tests", () => {
       expect(
         screen.getByPlaceholderText("What needs to be done?")
       ).toBeTruthy();
-      expect(screen.getByText("Priority:")).toBeTruthy();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("priority-1-button")).toBeTruthy();
-      expect(screen.getByTestId("priority-2-button")).toBeTruthy();
-      expect(screen.getByTestId("priority-3-button")).toBeTruthy();
       expect(screen.getByTestId("add-todo-button")).toBeTruthy();
     });
   });

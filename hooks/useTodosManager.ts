@@ -9,9 +9,9 @@ type MutationType = "add" | "update" | "toggle" | "delete" | null;
 
 type TodoStats = {
   total: number;
+  active: number;
   completed: number;
-  pending: number;
-  highPriority: number;
+  archived: number;
 };
 
 export interface UseTodosManagerResult {
@@ -145,11 +145,13 @@ export default function useTodosManager(): UseTodosManagerResult {
 
   const stats = useMemo<TodoStats>(() => {
     const total = todos.length;
-    const completed = todos.filter((todo) => todo.completed).length;
-    const pending = total - completed;
-    const highPriority = todos.filter((todo) => todo.priority === 3).length;
+    const active = todos.filter((todo) => todo.status === "active").length;
+    const completed = todos.filter(
+      (todo) => todo.status === "completed"
+    ).length;
+    const archived = todos.filter((todo) => todo.status === "archived").length;
 
-    return { total, completed, pending, highPriority };
+    return { total, active, completed, archived };
   }, [todos]);
 
   const refetch = useCallback(async () => {

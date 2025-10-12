@@ -1,13 +1,11 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import type { Priority } from "../types/todo";
+import type { TodoStatus } from "../types/todo";
 
 export const todos = sqliteTable("todos", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull(),
   description: text("description"),
-  completed: integer("completed", { mode: "boolean" }).default(false).notNull(),
-  priority: integer("priority").$type<Priority>().default(1).notNull(),
-  category: text("category"),
+  status: text("status").$type<TodoStatus>().default("active").notNull(),
   due_date: text("due_date"), // ISO string format
   created_at: text("created_at").notNull(),
   updated_at: text("updated_at").notNull(),
