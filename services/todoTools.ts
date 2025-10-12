@@ -105,20 +105,6 @@ export const TODO_TOOLS: Tool[] = [
   {
     type: "function",
     function: {
-      name: "delete_todo",
-      description: "Delete a todo item by ID",
-      parameters: {
-        type: "object",
-        properties: {
-          id: { type: "number", description: "The ID of the todo to delete" },
-        },
-        required: ["id"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
       name: "toggle_todo",
       description: "Toggle the completed status of a todo",
       parameters: {
@@ -193,29 +179,6 @@ export const TODO_TOOLS: Tool[] = [
       },
     },
   },
-  {
-    type: "function",
-    function: {
-      name: "get_todo_stats",
-      description:
-        "Get statistics about todos (total, active, completed, archived)",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "clear_all_todos",
-      description: "Delete all todos from the database",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
-    },
-  },
 ];
 
 export async function executeTodoFunction(
@@ -272,17 +235,6 @@ export async function executeTodoFunction(
         return JSON.stringify(updatedTodo);
       }
 
-      case "delete_todo": {
-        const deleteResult = todoIdSchema.safeParse(parsedArgs);
-        if (!deleteResult.success) {
-          return JSON.stringify({ error: "Invalid ID parameter" });
-        }
-        const deleteSuccess = await platformTodoService.deleteTodo(
-          deleteResult.data.id
-        );
-        return JSON.stringify({ success: deleteSuccess });
-      }
-
       case "toggle_todo": {
         const toggleResult = todoIdSchema.safeParse(parsedArgs);
         if (!toggleResult.success) {
@@ -319,15 +271,6 @@ export async function executeTodoFunction(
         const archivedTodos = await platformTodoService.getArchivedTodos();
         return JSON.stringify(archivedTodos);
       }
-
-      case "get_todo_stats": {
-        const stats = await platformTodoService.getTodoStats();
-        return JSON.stringify(stats);
-      }
-
-      case "clear_all_todos":
-        await platformTodoService.clearAllTodos();
-        return JSON.stringify({ success: true, message: "All todos cleared" });
 
       default:
         return JSON.stringify({ error: `Unknown function: ${name}` });
