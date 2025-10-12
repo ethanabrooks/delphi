@@ -22,7 +22,6 @@ export type ResponsesParams = {
   tools?: Tool[];
   conversation?: string;
   background?: boolean;
-  max_tokens?: number;
 };
 
 export type ResponsesResult = {
@@ -242,7 +241,6 @@ export class OpenAIClient {
     tools,
     conversation,
     background = false,
-    max_tokens,
   }: ResponsesParams): Promise<ResponsesResult> {
     const requestBody: {
       model: string;
@@ -250,7 +248,6 @@ export class OpenAIClient {
       tools?: Tool[];
       conversation?: string;
       background?: boolean;
-      max_tokens?: number;
     } = {
       model,
       input,
@@ -263,10 +260,6 @@ export class OpenAIClient {
 
     if (conversation) {
       requestBody.conversation = conversation;
-    }
-
-    if (max_tokens) {
-      requestBody.max_tokens = max_tokens;
     }
 
     const response = await fetch(`${OPENAI_BASE_URL}/v1/responses`, {

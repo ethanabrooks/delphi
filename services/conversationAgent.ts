@@ -123,7 +123,6 @@ Keep responses conversational and concise since this is a voice interface.`;
           input: userMessage,
           tools: TODO_TOOLS,
           conversation: this.state.conversationId,
-          max_tokens: 300,
         });
 
         // Store the conversation ID for future requests
@@ -151,7 +150,6 @@ Keep responses conversational and concise since this is a voice interface.`;
             model: "gpt-4o",
             input: followUpInput,
             conversation: this.state.conversationId,
-            max_tokens: 200,
           });
 
           const assistantResponse =
