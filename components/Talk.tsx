@@ -1,7 +1,7 @@
 import { ResizeMode, Video } from "expo-av";
 import { Link } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, StyleSheet } from "react-native";
+import { Alert, Platform, Pressable, StyleSheet } from "react-native";
 import { Text, View } from "tamagui";
 import { ConversationAgent } from "../services/conversationAgent";
 import OpenAIClient from "../services/openaiClient";
@@ -183,18 +183,20 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 
   return (
     <View style={styles.container}>
-      {/* Background video */}
-      <Video
-        style={styles.backgroundVideo}
-        source={{
-          uri: require("../assets/videos/background-video.mp4"),
-        }}
-        shouldPlay={true}
-        isLooping={true}
-        isMuted={true}
-        resizeMode={ResizeMode.COVER}
-        useNativeControls={false}
-      />
+      {/* Background video - only on native platforms */}
+      {Platform.OS !== "web" && (
+        <Video
+          style={styles.backgroundVideo}
+          source={{
+            uri: require("../assets/videos/background-video.mp4"),
+          }}
+          shouldPlay={true}
+          isLooping={true}
+          isMuted={true}
+          resizeMode={ResizeMode.COVER}
+          useNativeControls={false}
+        />
+      )}
 
       {/* Discrete hamburger menu */}
       <Link href="/todo" style={styles.hamburger}>
@@ -247,7 +249,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "transparent",
+    backgroundColor: Platform.OS === "web" ? "#000000" : "transparent",
   },
   backgroundVideo: {
     position: "absolute",
