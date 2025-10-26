@@ -37,6 +37,16 @@ npx jest __tests__/TodoStore.test.ts
 npx jest --testNamePattern="should add todo"
 ```
 
+## Git Workflow
+
+### Commit Guidelines
+**NEVER use `--no-verify` flag when committing.** Git hooks are in place for a reason and must not be bypassed. This includes:
+- Pre-commit hooks that run linting and formatting
+- Commit message hooks that enforce conventions
+- Any other verification steps configured in the repository
+
+Always let hooks run their full verification process. If hooks fail, fix the underlying issues rather than bypassing them.
+
 ## Architecture Overview
 
 ### State Management
