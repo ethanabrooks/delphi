@@ -361,33 +361,12 @@ class WebTodoService {
 // Lazy import TodoService only when not on web to avoid SQLite dependency
 let nativeService: typeof import("./todoService").TodoService | null = null;
 
-const hasJestFlag = (candidate: unknown): candidate is { jest?: unknown } =>
-  typeof candidate === "object" && candidate !== null && "jest" in candidate;
-
-const isJestEnv = (() => {
-  // Check for Jest global variables
-  if (typeof jest !== "undefined") return true;
-  if (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
-    return true;
-
-  // Check for Jest flag in global objects
-  const globals = [global, globalThis].filter((g) => typeof g !== "undefined");
-  return globals.some((g) => hasJestFlag(g) && Boolean(g.jest));
-})();
-
-const getNativeService = async (): Promise<
-  typeof import("./todoService").TodoService
-> => {
+const getNativeService = (): typeof import("./todoService").TodoService => {
   if (!nativeService) {
-    if (isJestEnv) {
-      // In Jest environment, use require to avoid dynamic import issues
-      const { TodoService } = require("./todoService");
-      nativeService = TodoService;
-    } else {
-      // In normal environment, use dynamic import
-      const { TodoService } = await import("./todoService");
-      nativeService = TodoService;
-    }
+    // Use require() instead of dynamic import() because Metro bundler
+    // fails static analysis on dynamic imports during pre-commit hooks
+    const { TodoService } = require("./todoService");
+    nativeService = TodoService;
   }
   return nativeService as typeof import("./todoService").TodoService;
 };
@@ -398,7 +377,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.getAllTodos();
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     return service.getAllTodos();
   }
 
@@ -406,7 +385,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.createTodo(input);
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     return service.createTodo(input);
   }
 
@@ -414,7 +393,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.updateTodo(input);
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     return service.updateTodo(input.id, input);
   }
 
@@ -422,7 +401,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.deleteTodo(id);
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     return service.deleteTodo(id);
   }
 
@@ -430,7 +409,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.toggleCompleted(id);
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     // Use getAllTodos for compatibility with tests that mock it
     const allTodos = await service.getAllTodos();
     const todo = allTodos.find((t) => t.id === id);
@@ -450,7 +429,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.toggleArchived(id);
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     // Use getAllTodos for compatibility with tests that mock it
     const allTodos = await service.getAllTodos();
     const todo = allTodos.find((t) => t.id === id);
@@ -470,7 +449,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.clearAllTodos();
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     return service.clearAllTodos();
   }
 
@@ -478,7 +457,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.getTodoById(id);
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     // Use getAllTodos for compatibility with tests that mock it
     const allTodos = await service.getAllTodos();
     return allTodos.find((todo) => todo.id === id) || null;
@@ -488,7 +467,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.getActiveTodos();
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     return service.getActiveTodos();
   }
 
@@ -496,7 +475,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.getCompletedTodos();
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     return service.getCompletedTodos();
   }
 
@@ -504,7 +483,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.getArchivedTodos();
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     return service.getArchivedTodos();
   }
 
@@ -512,7 +491,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.getTodosByStatus(status);
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     return service.getTodosByStatus(status);
   }
 
@@ -525,7 +504,7 @@ class PlatformTodoServiceWrapper {
     if (isWebPlatform) {
       return WebTodoService.getTodoStats();
     }
-    const service = await getNativeService();
+    const service = getNativeService();
     return service.getTodoStats();
   }
 }
