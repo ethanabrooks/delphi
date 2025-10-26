@@ -31,6 +31,7 @@ export interface UseTodosManagerResult {
   toggleCompleted: (id: number) => Promise<void>;
   toggleArchived: (id: number) => Promise<void>;
   deleteTodo: (identifier: number, status: TodoStatus) => Promise<void>;
+  reorderTodo: (todoId: number, newIndex: number) => Promise<void>;
   refetch: () => Promise<void>;
 }
 
@@ -195,6 +196,36 @@ export default function useTodosManager(): UseTodosManagerResult {
     return { total, active, completed, archived };
   }, [todos]);
 
+  const reorderTodo = useCallback(
+    async (todoId: number, newIndex: number) => {
+      try {
+        setLastMutation("update");
+        setError(null);
+
+        // Priority is 1-indexed, so newIndex 0 -> priority 1
+        const newPriority = newIndex + 1;
+
+        const updated = await platformTodoService.updateTodo({
+          id: todoId,
+          priority: newPriority,
+        });
+
+        if (!updated) {
+          setError("Failed to reorder todo");
+          return;
+        }
+
+        // Reload all todos to get correct ordering after priority updates
+        await loadTodos();
+      } catch (reorderError) {
+        setError(formatError("Failed to reorder todo", reorderError));
+      } finally {
+        setLastMutation(null);
+      }
+    },
+    [loadTodos]
+  );
+
   const refetch = useCallback(async () => {
     await loadTodos();
   }, [loadTodos]);
@@ -210,6 +241,7 @@ export default function useTodosManager(): UseTodosManagerResult {
     toggleCompleted,
     toggleArchived,
     deleteTodo,
+    reorderTodo,
     refetch,
   };
 }

@@ -1,302 +1,361 @@
-import { Mic } from "@tamagui/lucide-icons";
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, Mic } from "@tamagui/lucide-icons";
 import { Link } from "expo-router";
-import { useCallback, useContext, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  Animated,
-  KeyboardAvoidingView,
-  LayoutAnimation,
-  Platform,
-  StyleSheet,
-  TouchableOpacity,
-} from "react-native";
-import {
-  type EdgeInsets,
-  SafeAreaInsetsContext,
-} from "react-native-safe-area-context";
-import { Card, Input, ScrollView, Text, View, XStack } from "tamagui";
+import { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Input } from "tamagui";
+import { platformTodoService } from "../services/platformTodoService";
 import useTodosManager from "../hooks/useTodosManager";
 import type { Todo } from "../types/todo";
-import { getNextHighestPriority } from "../utils/priorityUtils";
 
-// Removed all styled components - using Tamagui components directly
+function SortableItem({
+  item,
+  onComplete,
+  onArchive,
+}: {
+  item: Todo;
+  onComplete: (id: number) => void;
+  onArchive: (id: number) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 999 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <View
+        style={[
+          styles.itemContainer,
+          isDragging && styles.itemDragging,
+        ]}
+      >
+        <div {...listeners} style={{ display: "flex", cursor: "grab" }}>
+          <GripVertical size={20} color="rgba(255, 255, 255, 0.8)" />
+        </div>
+        <View style={styles.itemContent}>
+          <Text style={styles.itemText}>{item.title}</Text>
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <button
+              onClick={() => onComplete(item.id)}
+              style={{
+                backgroundColor: "#38bdf8",
+                border: "1px solid rgba(56, 189, 248, 0.65)",
+                borderRadius: 999,
+                paddingLeft: 18,
+                paddingRight: 18,
+                paddingTop: 10,
+                paddingBottom: 10,
+                color: "#0f172a",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Done
+            </button>
+            <button
+              onClick={() => onArchive(item.id)}
+              style={{
+                backgroundColor: "rgba(56, 189, 248, 0.08)",
+                border: "1px solid rgba(56, 189, 248, 0.35)",
+                borderRadius: 999,
+                paddingLeft: 18,
+                paddingRight: 18,
+                paddingTop: 10,
+                paddingBottom: 10,
+                color: "#e0f2fe",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Archive
+            </button>
+          </div>
+        </View>
+      </View>
+    </div>
+  );
+}
+
+function SortableList({
+  items,
+  onReorder,
+  onComplete,
+  onArchive,
+}: {
+  items: Todo[];
+  onReorder: (items: Todo[]) => void;
+  onComplete: (id: number) => void;
+  onArchive: (id: number) => void;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = items.findIndex((item) => item.id === active.id);
+      const newIndex = items.findIndex((item) => item.id === over.id);
+      onReorder(arrayMove(items, oldIndex, newIndex));
+    }
+  }
+
+  return (
+    <View style={styles.listContainer}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={items} strategy={verticalListSortingStrategy}>
+          {items.map((item) => (
+            <SortableItem
+              key={item.id}
+              item={item}
+              onComplete={onComplete}
+              onArchive={onArchive}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
+    </View>
+  );
+}
 
 export default function TodoList() {
-  const safeAreaInsets = useContext(SafeAreaInsetsContext);
-  const insets: EdgeInsets = safeAreaInsets ?? {
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-  };
-  const [newTodo, setNewTodo] = useState("");
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
-  const completedAnimation = useRef(new Animated.Value(0)).current;
-  const archivedAnimation = useRef(new Animated.Value(0)).current;
   const {
     todos,
-    stats,
-    error,
     addTodo,
-    updateTodo,
+    reorderTodo,
     toggleCompleted,
     toggleArchived,
+    updateTodo,
+    refetch,
   } = useTodosManager();
+  const [newTodo, setNewTodo] = useState("");
+  const [localTodos, setLocalTodos] = useState<Todo[]>([]);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
-  const { completed, archived } = stats;
+  const activeTodos = todos
+    .filter((todo) => todo.status === "active")
+    .sort((a, b) => (a.priority || 0) - (b.priority || 0));
 
-  // Memoized status buckets
-  const todosByStatus = useMemo(() => {
-    const activeTodos = todos
-      .filter((todo) => todo.status === "active")
-      .sort((a, b) => (a.priority || 0) - (b.priority || 0));
-    const completedTodos = todos.filter((todo) => todo.status === "completed");
-    const archivedTodos = todos.filter((todo) => todo.status === "archived");
-    return { activeTodos, completedTodos, archivedTodos };
+  const completedTodos = todos.filter((todo) => todo.status === "completed");
+  const archivedTodos = todos.filter((todo) => todo.status === "archived");
+
+  useEffect(() => {
+    console.log("Active todos ordered by priority:",
+      activeTodos.map(t => ({ id: t.id, title: t.title, priority: t.priority }))
+    );
+    setLocalTodos(activeTodos);
   }, [todos]);
 
-  const handleAddTodo = useCallback(async () => {
-    if (!newTodo.trim()) {
-      Alert.alert("Error", "Please enter a todo item");
-      return;
-    }
-
-    // Calculate the next highest priority (lowest number available) for active todos
-    const priority = getNextHighestPriority(todos, "active");
+  const handleAddTodo = async () => {
+    if (!newTodo.trim()) return;
 
     await addTodo({
       title: newTodo.trim(),
-      priority,
+      priority: activeTodos.length + 1,
     });
 
     setNewTodo("");
-  }, [addTodo, newTodo, todos]);
+  };
 
-  const handleToggleCompleted = useCallback(
-    async (todo: Todo) => {
-      await toggleCompleted(todo.id);
-    },
-    [toggleCompleted]
-  );
+  const handleReorder = async (reorderedTodos: Todo[]) => {
+    console.log("Reordering todos:");
+    reorderedTodos.forEach((todo, i) => {
+      console.log(`  [${i}] ${todo.title} - old priority: ${todo.priority}, new priority: ${i + 1}`);
+    });
 
-  const handleToggleArchived = useCallback(
-    async (todo: Todo) => {
-      await toggleArchived(todo.id);
-    },
-    [toggleArchived]
-  );
+    setLocalTodos(reorderedTodos);
 
-  const handleArchiveTodo = useCallback(
-    async (todo: Todo) => {
-      if (todo.status !== "active") return;
-
-      await updateTodo({
+    // Build batch update payload
+    const updates = reorderedTodos
+      .map((todo, i) => ({
         id: todo.id,
-        status: "archived",
-      });
-    },
-    [updateTodo]
-  );
+        priority: i + 1,
+      }))
+      .filter((update, i) => reorderedTodos[i].priority !== update.priority);
 
-  const toggleCompletedSection = useCallback(() => {
-    if (Platform.OS === "ios" || Platform.OS === "android") {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    }
-    const toValue = showCompleted ? 0 : 1;
-    setShowCompleted(!showCompleted);
+    console.log(`Batch updating ${updates.length} priorities`);
 
-    Animated.timing(completedAnimation, {
-      toValue,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [showCompleted]);
+    // Use batch update to set all priorities at once
+    await platformTodoService.batchUpdatePriorities(updates);
 
-  const toggleArchivedSection = useCallback(() => {
-    if (Platform.OS === "ios" || Platform.OS === "android") {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    }
-    const toValue = showArchived ? 0 : 1;
-    setShowArchived(!showArchived);
+    console.log("Batch update complete, refetching todos");
 
-    Animated.timing(archivedAnimation, {
-      toValue,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [showArchived]);
+    // Manually refetch to see the updated priorities
+    await refetch();
 
-  // Keyboard navigation support
+    console.log("All updates complete, priorities should now be saved");
+  };
 
-  const { activeTodos, completedTodos, archivedTodos } = todosByStatus;
+  const handleComplete = async (id: number) => {
+    await toggleCompleted(id);
+  };
+
+  const handleArchive = async (id: number) => {
+    await updateTodo({
+      id,
+      status: "archived",
+    });
+  };
+
+  const handleRestoreArchived = async (id: number) => {
+    await toggleArchived(id);
+  };
 
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View
-          style={[
-            styles.safeArea,
-            {
-              paddingTop: Math.max(insets.top, 28),
-              paddingBottom: Math.max(insets.bottom, 32),
-            },
-          ]}
-        >
-          <View style={styles.header}>
-            <Text style={styles.screenTitle}>Tasks</Text>
-            <Link href="/talk" style={styles.hamburger}>
-              <Mic size={20} color="#38bdf8" />
-            </Link>
-          </View>
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.screenTitle}>Tasks</Text>
+        <Link href="/talk" style={styles.hamburger}>
+          <Mic size={20} color="#38bdf8" />
+        </Link>
+      </View>
 
-          {error && (
-            <Card style={styles.errorCard}>
-              <Text style={styles.errorText}>{error}</Text>
-            </Card>
-          )}
+      <View style={styles.inputCard}>
+        <Input
+          unstyled
+          value={newTodo}
+          onChangeText={setNewTodo}
+          onSubmitEditing={handleAddTodo}
+          placeholder="Capture a task..."
+          placeholderTextColor="rgba(203,213,225,0.45)"
+          style={styles.input}
+          testID="todo-input"
+          returnKeyType="done"
+        />
+      </View>
 
-          <View style={styles.inputCard}>
-            <Input
-              unstyled
-              value={newTodo}
-              onChangeText={setNewTodo}
-              onSubmitEditing={handleAddTodo}
-              placeholder="Capture a task..."
-              placeholderTextColor="rgba(203,213,225,0.45)"
-              style={styles.input}
-              testID="todo-input"
-              returnKeyType="done"
-            />
-          </View>
+      <SortableList
+        items={localTodos}
+        onReorder={handleReorder}
+        onComplete={handleComplete}
+        onArchive={handleArchive}
+      />
 
-          <ScrollView
-            style={styles.flex}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
+      {completedTodos.length > 0 && (
+        <View style={styles.section}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.toggleButton}
+            onPress={() => setShowCompleted(!showCompleted)}
           >
-            {activeTodos.length > 0 ? (
-              activeTodos.map((todo) => (
-                <Card key={todo.id} style={styles.todoCard}>
-                  <Text style={styles.todoText}>{todo.title}</Text>
-                  <XStack space="$2" style={styles.todoActions}>
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      style={[styles.actionButton, styles.completeButton]}
-                      onPress={() => handleToggleCompleted(todo)}
-                    >
-                      <Text style={styles.actionButtonText}>Done</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      style={[styles.actionButton, styles.archiveButton]}
-                      onPress={() => handleArchiveTodo(todo)}
-                    >
-                      <Text style={styles.actionSecondaryText}>Archive</Text>
-                    </TouchableOpacity>
-                  </XStack>
-                </Card>
-              ))
-            ) : (
-              <Text style={styles.emptyState}>No active todos</Text>
-            )}
+            <Text style={styles.toggleButtonText}>
+              {showCompleted ? "▼" : "▶"} Completed ({completedTodos.length})
+            </Text>
+          </TouchableOpacity>
 
-            {completed > 0 && (
-              <View style={styles.section}>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={styles.toggleButton}
-                  onPress={toggleCompletedSection}
-                >
-                  <Text style={styles.toggleButtonText}>
-                    {showCompleted ? "▼" : "▶"} Completed ({completed})
-                  </Text>
-                </TouchableOpacity>
-
-                <Animated.View
-                  style={{
-                    maxHeight: completedAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, 1000],
-                    }),
-                    opacity: completedAnimation,
-                    overflow: "hidden",
-                  }}
-                >
-                  {completedTodos.map((todo) => (
-                    <Card
-                      key={todo.id}
-                      style={[styles.todoCard, styles.completedCard]}
-                    >
-                      <Text style={[styles.todoText, styles.completedText]}>
-                        {todo.title}
-                      </Text>
-                      <XStack space="$2" style={styles.todoActions}>
-                        <TouchableOpacity
-                          activeOpacity={0.85}
-                          style={[styles.actionButton, styles.completeButton]}
-                          onPress={() => handleToggleCompleted(todo)}
-                        >
-                          <Text style={styles.actionButtonText}>Undo</Text>
-                        </TouchableOpacity>
-                      </XStack>
-                    </Card>
-                  ))}
-                </Animated.View>
-              </View>
-            )}
-
-            {archived > 0 && (
-              <View style={styles.section}>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={styles.toggleButton}
-                  onPress={toggleArchivedSection}
-                >
-                  <Text style={styles.toggleButtonText}>
-                    {showArchived ? "▼" : "▶"} Archived ({archived})
-                  </Text>
-                </TouchableOpacity>
-
-                <Animated.View
-                  style={{
-                    maxHeight: archivedAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, 1000],
-                    }),
-                    opacity: archivedAnimation,
-                    overflow: "hidden",
-                  }}
-                >
-                  {archivedTodos.map((todo) => (
-                    <Card
-                      key={todo.id}
-                      style={[styles.todoCard, styles.archivedCard]}
-                    >
-                      <Text style={[styles.todoText, styles.archivedText]}>
-                        {todo.title}
-                      </Text>
-                      <XStack space="$2" style={styles.todoActions}>
-                        <TouchableOpacity
-                          activeOpacity={0.85}
-                          style={[styles.actionButton, styles.completeButton]}
-                          onPress={() => handleToggleArchived(todo)}
-                        >
-                          <Text style={styles.actionButtonText}>Restore</Text>
-                        </TouchableOpacity>
-                      </XStack>
-                    </Card>
-                  ))}
-                </Animated.View>
-              </View>
-            )}
-          </ScrollView>
+          {showCompleted && (
+            <View>
+              {completedTodos.map((todo) => (
+                <View key={todo.id} style={styles.completedCard}>
+                  <Text style={styles.completedText}>{todo.title}</Text>
+                  <button
+                    onClick={() => handleComplete(todo.id)}
+                    style={{
+                      backgroundColor: "#38bdf8",
+                      border: "1px solid rgba(56, 189, 248, 0.65)",
+                      borderRadius: 999,
+                      paddingLeft: 18,
+                      paddingRight: 18,
+                      paddingTop: 10,
+                      paddingBottom: 10,
+                      color: "#0f172a",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      marginTop: 14,
+                    }}
+                  >
+                    Undo
+                  </button>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      )}
+
+      {archivedTodos.length > 0 && (
+        <View style={styles.section}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.toggleButton}
+            onPress={() => setShowArchived(!showArchived)}
+          >
+            <Text style={styles.toggleButtonText}>
+              {showArchived ? "▼" : "▶"} Archived ({archivedTodos.length})
+            </Text>
+          </TouchableOpacity>
+
+          {showArchived && (
+            <View>
+              {archivedTodos.map((todo) => (
+                <View key={todo.id} style={styles.archivedCard}>
+                  <Text style={styles.archivedText}>{todo.title}</Text>
+                  <button
+                    onClick={() => handleRestoreArchived(todo.id)}
+                    style={{
+                      backgroundColor: "#38bdf8",
+                      border: "1px solid rgba(56, 189, 248, 0.65)",
+                      borderRadius: 999,
+                      paddingLeft: 18,
+                      paddingRight: 18,
+                      paddingTop: 10,
+                      paddingBottom: 10,
+                      color: "#0f172a",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      marginTop: 14,
+                    }}
+                  >
+                    Restore
+                  </button>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
@@ -304,22 +363,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#020617",
-  },
-  flex: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-    width: "100%",
-    paddingHorizontal: 24,
-    maxWidth: 520,
-    alignSelf: "center",
+    padding: 20,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 28,
+    marginTop: 40,
   },
   screenTitle: {
     fontSize: 24,
@@ -334,20 +385,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
-  },
-  errorCard: {
-    backgroundColor: "rgba(248, 113, 113, 0.12)",
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderWidth: 1,
-    borderColor: "rgba(248, 113, 113, 0.35)",
-    marginBottom: 16,
-  },
-  errorText: {
-    color: "#fecaca",
-    textAlign: "center",
-    fontSize: 14,
   },
   inputCard: {
     backgroundColor: "rgba(15, 23, 42, 0.75)",
@@ -366,73 +403,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     borderWidth: 0,
   },
-  listContent: {
-    paddingBottom: 120,
+  listContainer: {
+    marginBottom: 32,
   },
-  section: {
-    marginTop: 24,
-  },
-  todoCard: {
+  itemContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    padding: 20,
+    marginVertical: 8,
+    borderRadius: 16,
     backgroundColor: "rgba(15, 23, 42, 0.65)",
-    borderRadius: 20,
     borderWidth: 1,
     borderColor: "rgba(148, 163, 184, 0.18)",
-    padding: 18,
-    marginBottom: 16,
   },
-  todoText: {
+  itemContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  itemDragging: {
+    opacity: 0.7,
+  },
+  itemText: {
     color: "#f8fafc",
     fontSize: 16,
     lineHeight: 22,
   },
-  todoActions: {
-    marginTop: 14,
-  },
-  actionButton: {
-    backgroundColor: "rgba(56, 189, 248, 0.1)",
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: "rgba(56, 189, 248, 0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  completeButton: {
-    backgroundColor: "#38bdf8",
-    borderColor: "rgba(56, 189, 248, 0.65)",
-  },
-  archiveButton: {
-    backgroundColor: "rgba(56, 189, 248, 0.08)",
-  },
-  actionButtonText: {
-    color: "#0f172a",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  actionSecondaryText: {
-    color: "#e0f2fe",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  emptyState: {
-    color: "rgba(226, 232, 240, 0.55)",
-    textAlign: "center",
-    marginTop: 48,
-    fontSize: 15,
-  },
-  completedCard: {
-    opacity: 0.75,
-  },
-  completedText: {
-    textDecorationLine: "line-through",
-    color: "rgba(226, 232, 240, 0.75)",
-  },
-  archivedCard: {
-    opacity: 0.6,
-  },
-  archivedText: {
-    color: "rgba(148, 163, 184, 0.75)",
+  section: {
+    marginTop: 24,
   },
   toggleButton: {
     backgroundColor: "rgba(15, 23, 42, 0.55)",
@@ -448,5 +445,34 @@ const styles = StyleSheet.create({
     color: "rgba(226, 232, 240, 0.65)",
     fontSize: 14,
     fontWeight: "600",
+  },
+  completedCard: {
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.18)",
+    padding: 18,
+    marginBottom: 16,
+    opacity: 0.75,
+  },
+  completedText: {
+    color: "rgba(226, 232, 240, 0.75)",
+    fontSize: 16,
+    lineHeight: 22,
+    textDecorationLine: "line-through",
+  },
+  archivedCard: {
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.18)",
+    padding: 18,
+    marginBottom: 16,
+    opacity: 0.6,
+  },
+  archivedText: {
+    color: "rgba(148, 163, 184, 0.75)",
+    fontSize: 16,
+    lineHeight: 22,
   },
 });

@@ -356,6 +356,31 @@ class WebTodoService {
       archived: todos.filter((todo) => todo.status === "archived").length,
     };
   }
+
+  /**
+   * Batch update priorities for multiple todos without triggering swap logic
+   * Used for drag-and-drop reordering
+   */
+  static async batchUpdatePriorities(
+    updates: Array<{ id: number; priority: number }>
+  ): Promise<void> {
+    const todos = WebTodoService.read();
+    const now = new Date().toISOString();
+
+    // Create a map of id -> new priority for quick lookup
+    const priorityMap = new Map(updates.map((u) => [u.id, u.priority]));
+
+    // Update todos in memory
+    const updatedTodos = todos.map((todo) => {
+      const newPriority = priorityMap.get(todo.id);
+      if (newPriority !== undefined) {
+        return { ...todo, priority: newPriority, updated_at: now };
+      }
+      return todo;
+    });
+
+    WebTodoService.write(updatedTodos);
+  }
 }
 
 // Lazy import TodoService only when not on web to avoid SQLite dependency
@@ -506,6 +531,20 @@ class PlatformTodoServiceWrapper {
     }
     const service = getNativeService();
     return service.getTodoStats();
+  }
+
+  static async batchUpdatePriorities(
+    updates: Array<{ id: number; priority: number }>
+  ): Promise<void> {
+    if (isWebPlatform) {
+      return WebTodoService.batchUpdatePriorities(updates);
+    }
+    // For native, we'll need to implement this if needed
+    // For now, just do individual updates sequentially
+    const service = getNativeService();
+    for (const update of updates) {
+      await service.updateTodo(update.id, { priority: update.priority });
+    }
   }
 }
 
