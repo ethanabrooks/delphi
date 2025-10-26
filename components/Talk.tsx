@@ -49,6 +49,13 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     return new ConversationAgent(apiKey);
   }, [apiKey]);
 
+  // Cleanup conversation agent on unmount or when apiKey changes
+  useEffect(() => {
+    return () => {
+      conversationAgent.dispose();
+    };
+  }, [conversationAgent]);
+
   useEffect(() => {
     setIsSupported(voiceService.isSupported());
 

@@ -396,4 +396,43 @@ You have access to tools to help users manage their todos. Be concise and helpfu
     this.state.messages = [];
     // System message will be rebuilt on next processMessage call
   }
+
+  /**
+   * Dispose of the agent, clearing all state and releasing resources.
+   * Should be called when the agent is no longer needed (e.g., on component unmount).
+   */
+  dispose(): void {
+    this.state.conversationId = undefined;
+    this.state.messages = [];
+    this.client = null;
+  }
+
+  /**
+   * Get the current conversation state for observation.
+   */
+  getConversationState(): Readonly<ConversationState> {
+    return {
+      conversationId: this.state.conversationId,
+      messages: [...this.state.messages],
+    };
+  }
+
+  /**
+   * Get the count of messages in the conversation (excluding system messages).
+   */
+  getMessageCount(): number {
+    return this.state.messages.filter((m) => m.role !== "system").length;
+  }
+
+  /**
+   * Get the last user or assistant message, if any.
+   */
+  getLastMessage(): ChatCompletionMessage | undefined {
+    const nonSystemMessages = this.state.messages.filter(
+      (m) => m.role === "user" || m.role === "assistant"
+    );
+    return nonSystemMessages.length > 0
+      ? nonSystemMessages[nonSystemMessages.length - 1]
+      : undefined;
+  }
 }

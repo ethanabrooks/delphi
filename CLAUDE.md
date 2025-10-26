@@ -64,6 +64,14 @@ Always let hooks run their full verification process. If hooks fail, fix the und
   - Native platforms: Expo AV for recording, Expo Speech for TTS
   - Web: MediaRecorder API with OpenAI TTS fallback
 - **OpenAI Client** (`services/openaiClient.ts`) provides typed API wrappers with Zod validation
+- **ConversationAgent** (`services/conversationAgent.ts`) manages stateful conversations with OpenAI
+  - Implements lifecycle methods (`dispose()`) for proper cleanup
+  - Exposes observable state (messages, conversationId, counts)
+  - Handles context length limits with automatic compaction
+- **useConversationAgent hook** (`hooks/useConversationAgent.ts`) provides React lifecycle integration
+  - Automatically disposes agent on unmount
+  - Recreates agent when API key changes
+  - Exposes conversation state and actions
 - Talk component handles voice UI and orchestration
 
 #### VoiceService Lifecycle & Resource Management
@@ -128,3 +136,39 @@ The app requires `EXPO_PUBLIC_OPENAI_API_KEY` in `.env` for voice functionality.
 - Components use imperative service calls rather than declarative data fetching
 - Database schema uses Drizzle's typed approach with custom type annotations
 - Tests extensively mock platform-specific APIs to run in Node environment
+
+## Lifecycle Management
+
+### ConversationAgent Lifecycle
+The `ConversationAgent` class maintains internal conversation state and requires explicit cleanup:
+
+**Direct Usage (with manual cleanup):**
+```typescript
+const agent = useMemo(() => new ConversationAgent(apiKey), [apiKey]);
+
+useEffect(() => {
+  return () => {
+    agent.dispose(); // Clears state and releases resources
+  };
+}, [agent]);
+```
+
+**Recommended: Use the Hook:**
+```typescript
+const { agent, messages, conversationId, processMessage } =
+  useConversationAgent({ apiKey });
+// Cleanup handled automatically
+```
+
+**Key Methods:**
+- `dispose()` - Complete cleanup (clears state, nulls client)
+- `clearConversation()` - Resets conversation (preserves client)
+- `getConversationState()` - Read-only state snapshot
+- `getMessageCount()` - Count non-system messages
+- `getLastMessage()` - Get most recent user/assistant message
+
+**Lifecycle Contract:**
+1. Agent instances must be disposed when no longer needed
+2. Disposal happens automatically on component unmount (when using hook)
+3. New agent instance created when API key changes
+4. No stale conversation state persists across remounts
