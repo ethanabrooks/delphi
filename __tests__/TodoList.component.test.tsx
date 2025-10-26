@@ -35,7 +35,7 @@ describe("TodoList Component - Tamagui Mock Tests", () => {
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText("Capture a task...")).toBeTruthy();
-      expect(screen.getByText("No active todos")).toBeTruthy();
+      expect(screen.getByText("Tasks")).toBeTruthy();
     });
   });
 

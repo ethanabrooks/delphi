@@ -17,11 +17,17 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Mic } from "@tamagui/lucide-icons";
 import { Link } from "expo-router";
-import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Input } from "tamagui";
-import { platformTodoService } from "../services/platformTodoService";
 import useTodosManager from "../hooks/useTodosManager";
+import { platformTodoService } from "../services/platformTodoService";
 import type { Todo } from "../types/todo";
 
 function SortableItem({
@@ -51,12 +57,7 @@ function SortableItem({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <View
-        style={[
-          styles.itemContainer,
-          isDragging && styles.itemDragging,
-        ]}
-      >
+      <View style={[styles.itemContainer, isDragging && styles.itemDragging]}>
         <div {...listeners} style={{ display: "flex", cursor: "grab" }}>
           <GripVertical size={20} color="rgba(255, 255, 255, 0.8)" />
         </div>
@@ -64,6 +65,7 @@ function SortableItem({
           <Text style={styles.itemText}>{item.title}</Text>
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <button
+              type="button"
               onClick={() => onComplete(item.id)}
               style={{
                 backgroundColor: "#38bdf8",
@@ -82,6 +84,7 @@ function SortableItem({
               Done
             </button>
             <button
+              type="button"
               onClick={() => onArchive(item.id)}
               style={{
                 backgroundColor: "rgba(56, 189, 248, 0.08)",
@@ -160,7 +163,6 @@ export default function TodoList() {
   const {
     todos,
     addTodo,
-    reorderTodo,
     toggleCompleted,
     toggleArchived,
     updateTodo,
@@ -171,19 +173,20 @@ export default function TodoList() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
 
-  const activeTodos = todos
-    .filter((todo) => todo.status === "active")
-    .sort((a, b) => (a.priority || 0) - (b.priority || 0));
+  const activeTodos = useMemo(
+    () =>
+      todos
+        .filter((todo) => todo.status === "active")
+        .sort((a, b) => (a.priority || 0) - (b.priority || 0)),
+    [todos]
+  );
 
   const completedTodos = todos.filter((todo) => todo.status === "completed");
   const archivedTodos = todos.filter((todo) => todo.status === "archived");
 
   useEffect(() => {
-    console.log("Active todos ordered by priority:",
-      activeTodos.map(t => ({ id: t.id, title: t.title, priority: t.priority }))
-    );
     setLocalTodos(activeTodos);
-  }, [todos]);
+  }, [activeTodos]);
 
   const handleAddTodo = async () => {
     if (!newTodo.trim()) return;
@@ -197,11 +200,6 @@ export default function TodoList() {
   };
 
   const handleReorder = async (reorderedTodos: Todo[]) => {
-    console.log("Reordering todos:");
-    reorderedTodos.forEach((todo, i) => {
-      console.log(`  [${i}] ${todo.title} - old priority: ${todo.priority}, new priority: ${i + 1}`);
-    });
-
     setLocalTodos(reorderedTodos);
 
     // Build batch update payload
@@ -212,17 +210,11 @@ export default function TodoList() {
       }))
       .filter((update, i) => reorderedTodos[i].priority !== update.priority);
 
-    console.log(`Batch updating ${updates.length} priorities`);
-
     // Use batch update to set all priorities at once
     await platformTodoService.batchUpdatePriorities(updates);
 
-    console.log("Batch update complete, refetching todos");
-
     // Manually refetch to see the updated priorities
     await refetch();
-
-    console.log("All updates complete, priorities should now be saved");
   };
 
   const handleComplete = async (id: number) => {
@@ -288,6 +280,7 @@ export default function TodoList() {
                 <View key={todo.id} style={styles.completedCard}>
                   <Text style={styles.completedText}>{todo.title}</Text>
                   <button
+                    type="button"
                     onClick={() => handleComplete(todo.id)}
                     style={{
                       backgroundColor: "#38bdf8",
@@ -331,6 +324,7 @@ export default function TodoList() {
                 <View key={todo.id} style={styles.archivedCard}>
                   <Text style={styles.archivedText}>{todo.title}</Text>
                   <button
+                    type="button"
                     onClick={() => handleRestoreArchived(todo.id)}
                     style={{
                       backgroundColor: "#38bdf8",
