@@ -1,6 +1,12 @@
-import OpenAIClient, { type ChatCompletionMessage } from "./openaiClient";
+import OpenAIClient, {
+  type ChatCompletionMessage,
+  OpenAIClientError,
+} from "./openaiClient";
 import { platformTodoService } from "./platformTodoService";
-import { readSystemPromptTemplate } from "./promptLoader";
+import {
+  readSummarizationPromptTemplate,
+  readSystemPromptTemplate,
+} from "./promptLoader";
 import { executeSqlFunction, SQL_TOOLS } from "./sqlTools";
 import { executeTodoFunction, TODO_TOOLS } from "./todoTools";
 
@@ -114,6 +120,61 @@ ${activeTodos
     }
   }
 
+  private async compactConversation(
+    keepRecentCount: number = 6
+  ): Promise<void> {
+    if (this.state.messages.length <= keepRecentCount + 1) {
+      return; // Nothing to compact
+    }
+
+    const systemMessage = this.state.messages[0];
+    const recentMessages = this.state.messages.slice(-keepRecentCount);
+    const oldMessages = this.state.messages.slice(1, -keepRecentCount);
+
+    if (oldMessages.length === 0) {
+      return; // Nothing to summarize
+    }
+
+    // Format conversation history for summarization
+    const conversationHistory = oldMessages
+      .map((m) => `${m.role}: ${m.content || "[tool call]"}`)
+      .join("\n");
+
+    // Load the summarization prompt template
+    const summarizationPrompt = await readSummarizationPromptTemplate({
+      conversationHistory,
+    });
+
+    const summaryResponse = await this.client?.createChatCompletion({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a helpful assistant that creates concise conversation summaries.",
+        },
+        {
+          role: "user",
+          content: summarizationPrompt,
+        },
+      ],
+      maxTokens: 200,
+    });
+
+    const summary =
+      summaryResponse?.content || "Previous conversation context.";
+
+    // Replace old messages with summary
+    this.state.messages = [
+      systemMessage,
+      {
+        role: "system",
+        content: `[Summary of earlier conversation]: ${summary}`,
+      },
+      ...recentMessages,
+    ];
+  }
+
   async processMessage(userMessage: string): Promise<string> {
     if (!this.client) {
       return "I'm running in demo mode. Please add your OpenAI API key for full todo management functionality.";
@@ -190,7 +251,13 @@ ${activeTodos
       // Fall back to Chat Completions API
       // Note: Responses API may not be available yet, using Chat Completions as fallback
 
-      let response = await this.client.createChatCompletion({
+      return await this.processChatCompletion();
+    }
+  }
+
+  private async processChatCompletion(): Promise<string> {
+    try {
+      let response = await this.client?.createChatCompletion({
         model: "gpt-4o",
         messages: this.state.messages,
         maxTokens: 300,
@@ -199,7 +266,7 @@ ${activeTodos
       });
 
       // Handle function calls
-      if (response.tool_calls && response.tool_calls.length > 0) {
+      if (response?.tool_calls && response.tool_calls.length > 0) {
         // Add assistant message with tool calls
         this.state.messages.push({
           role: "assistant",
@@ -224,7 +291,7 @@ ${activeTodos
         }
 
         // Get final response after function execution
-        response = await this.client.createChatCompletion({
+        response = await this.client?.createChatCompletion({
           model: "gpt-4o",
           messages: this.state.messages,
           maxTokens: 200,
@@ -232,7 +299,7 @@ ${activeTodos
       }
 
       const assistantResponse =
-        response.content || "I'm sorry, I couldn't process that request.";
+        response?.content || "I'm sorry, I couldn't process that request.";
 
       // Add final assistant response to conversation
       this.state.messages.push({
@@ -240,14 +307,69 @@ ${activeTodos
         content: assistantResponse,
       });
 
-      // Keep conversation history manageable (last 10 messages)
-      if (this.state.messages.length > 10) {
-        const systemMessage = this.state.messages[0];
-        this.state.messages = [systemMessage, ...this.state.messages.slice(-9)];
+      return assistantResponse;
+    } catch (error) {
+      // If we hit context length limit, compact and retry once
+      if (error instanceof OpenAIClientError && error.isContextLengthError()) {
+        await this.compactConversation();
+        return await this.processChatCompletionAfterCompaction();
+      }
+      throw error;
+    }
+  }
+
+  private async processChatCompletionAfterCompaction(): Promise<string> {
+    let response = await this.client?.createChatCompletion({
+      model: "gpt-4o",
+      messages: this.state.messages,
+      maxTokens: 300,
+      tools: _ALL_TOOLS,
+      tool_choice: "auto",
+    });
+
+    // Handle function calls
+    if (response?.tool_calls && response.tool_calls.length > 0) {
+      // Add assistant message with tool calls
+      this.state.messages.push({
+        role: "assistant",
+        content: response.content,
+        tool_calls: response.tool_calls,
+      });
+
+      // Execute each tool call
+      for (const toolCall of response.tool_calls) {
+        const functionResult = await _executeToolFunction(
+          toolCall.function.name,
+          toolCall.function.arguments
+        );
+
+        // Add tool result to conversation
+        this.state.messages.push({
+          role: "tool",
+          content: functionResult,
+          tool_call_id: toolCall.id,
+          name: toolCall.function.name,
+        });
       }
 
-      return assistantResponse;
+      // Get final response after function execution
+      response = await this.client?.createChatCompletion({
+        model: "gpt-4o",
+        messages: this.state.messages,
+        maxTokens: 200,
+      });
     }
+
+    const assistantResponse =
+      response?.content || "I'm sorry, I couldn't process that request.";
+
+    // Add final assistant response to conversation
+    this.state.messages.push({
+      role: "assistant",
+      content: assistantResponse,
+    });
+
+    return assistantResponse;
   }
 
   getConversationHistory(): ChatCompletionMessage[] {

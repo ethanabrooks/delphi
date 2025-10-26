@@ -83,6 +83,23 @@ export class OpenAIClientError extends Error {
     super(message);
     this.name = "OpenAIClientError";
   }
+
+  isContextLengthError(): boolean {
+    if (this.status !== 400) return false;
+
+    // Check if the error body contains context length indicators
+    const errorBody = this.cause as any;
+    if (!errorBody?.error) return false;
+
+    const errorCode = errorBody.error.code;
+    const errorMessage = errorBody.error.message?.toLowerCase() || "";
+
+    return (
+      errorCode === "context_length_exceeded" ||
+      errorMessage.includes("maximum context length") ||
+      errorMessage.includes("context length")
+    );
+  }
 }
 
 const transcriptionSchema = z.object({

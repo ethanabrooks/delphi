@@ -2,21 +2,20 @@ import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system";
 
 /**
- * Reads and interpolates a system prompt template.
+ * Generic template loader with interpolation
  * Simple template substitution using {{placeholder}} syntax.
  */
-export async function readSystemPromptTemplate(
+async function loadTemplate(
+  requireModule: number,
   variables: Record<string, string>
 ): Promise<string> {
   // Load the template file as an asset
-  const asset = Asset.fromModule(
-    require("../prompts/conversation-agent-system-prompt.txt")
-  );
+  const asset = Asset.fromModule(requireModule);
 
   await asset.downloadAsync();
 
   if (!asset.localUri) {
-    throw new Error("Failed to load system prompt template");
+    throw new Error("Failed to load prompt template");
   }
 
   // Read the template content
@@ -29,4 +28,28 @@ export async function readSystemPromptTemplate(
   }
 
   return result;
+}
+
+/**
+ * Reads and interpolates the system prompt template.
+ */
+export async function readSystemPromptTemplate(
+  variables: Record<string, string>
+): Promise<string> {
+  return loadTemplate(
+    require("../prompts/conversation-agent-system-prompt.txt"),
+    variables
+  );
+}
+
+/**
+ * Reads and interpolates the conversation summarization prompt template.
+ */
+export async function readSummarizationPromptTemplate(
+  variables: Record<string, string>
+): Promise<string> {
+  return loadTemplate(
+    require("../prompts/conversation-summarization-prompt.txt"),
+    variables
+  );
 }

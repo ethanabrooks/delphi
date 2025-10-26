@@ -1,0 +1,9 @@
+Please provide a concise summary of the following conversation history. Focus on:
+- Key topics discussed
+- Important decisions or actions taken
+- Relevant context for future interactions
+
+Conversation to summarize:
+{{conversationHistory}}
+
+Provide a brief summary (2-3 sentences):
