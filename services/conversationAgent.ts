@@ -1,5 +1,6 @@
 import OpenAIClient, { type ChatCompletionMessage } from "./openaiClient";
 import { platformTodoService } from "./platformTodoService";
+import { readSystemPromptTemplate } from "./promptLoader";
 import { executeSqlFunction, SQL_TOOLS } from "./sqlTools";
 import { executeTodoFunction, TODO_TOOLS } from "./todoTools";
 
@@ -44,7 +45,9 @@ export class ConversationAgent {
     try {
       const activeTodos = await platformTodoService.getActiveTodos();
       if (activeTodos.length > 0) {
-        activeTodosContext = `\n\nCurrent Active Todos:
+        activeTodosContext = `
+
+Current Active Todos:
  id | priority |      title       |   description   | status  | due_date  |     created_at      |     updated_at
 ----+----------+------------------+-----------------+---------+-----------+---------------------+---------------------
 ${activeTodos
@@ -76,9 +79,7 @@ ${activeTodos
       activeTodosContext = "\n\nCurrent Active Todos: Unable to load";
     }
 
-    return `You are a helpful voice assistant that can manage todo items and analyze todo data. You have access to a todo management system with the following functions: create_todo, update_todo, and SQL database querying capabilities.
-
-Current date and time: ${new Date().toLocaleString("en-US", {
+    const currentDateTime = new Date().toLocaleString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -86,39 +87,12 @@ Current date and time: ${new Date().toLocaleString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       timeZoneName: "short",
-    })}
+    });
 
-IMPORTANT: You can see the complete list of active todos below. If a user tries to create a todo that already exists (similar or identical title), notify them that the todo already exists instead of creating a duplicate.
-
-Available Functions:
-- create_todo: Create a new todo item (check for duplicates first!)
-- update_todo: Update an existing todo by ID number (can change status to completed/active/archived)
-- execute_sql_query: Run custom SQL queries to analyze todo data, generate statistics, or perform advanced searches
-
-DATABASE SCHEMA:
-Table: todos
-- id: INTEGER PRIMARY KEY (auto-increment)
-- priority: INTEGER (position in active list, lower = higher priority)
-- title: TEXT (todo title/description)
-- description: TEXT (optional longer description)
-- status: TEXT ('active', 'completed', 'archived')
-- due_date: TEXT (ISO date string, optional)
-- created_at: TEXT (ISO datetime string)
-- updated_at: TEXT (ISO datetime string)
-
-${activeTodosContext}
-
-When users ask about their todos or want to manage tasks, you can see all their active todos above. Use the available functions to help them manage tasks. Always be conversational and helpful.
-
-Examples:
-- "Add a todo to buy groceries" → Check if groceries todo exists first, then use create_todo if unique
-- "Mark ID 5 as done" → use update_todo with id 5 and newStatus: "completed"
-- "Update the first active todo" → use update_todo with the ID of the first active todo shown above
-- "How many todos do I have by status?" → use execute_sql_query with "SELECT status, COUNT(*) as count FROM todos GROUP BY status"
-- "Show me todos created this week" → use execute_sql_query with date filtering
-- "What completed todos do I have?" → Look at the active todos above or use execute_sql_query
-
-Keep responses conversational and concise since this is a voice interface.`;
+    return readSystemPromptTemplate({
+      currentDateTime,
+      activeTodosContext,
+    });
   }
 
   private async ensureSystemMessage(): Promise<void> {
