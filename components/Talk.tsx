@@ -1,5 +1,5 @@
-import { ResizeMode, Video } from "expo-av";
 import { Link } from "expo-router";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Platform, Pressable, StyleSheet } from "react-native";
 import { Text, View } from "tamagui";
@@ -22,6 +22,16 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     voiceService.isSupported()
   );
   const [amplitudeData, setAmplitudeData] = useState<number[]>([]);
+
+  // Create video player (iOS will use it, web won't)
+  const videoPlayer = useVideoPlayer(
+    require("../assets/videos/background-video.mp4"),
+    (player) => {
+      player.loop = true;
+      player.muted = true;
+      player.play();
+    }
+  );
 
   const openAiClient = useMemo(() => {
     if (!apiKey) {
@@ -169,19 +179,39 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 
   return (
     <View style={styles.container}>
-      {/* Background video - only on native platforms */}
-      {Platform.OS !== "web" && (
-        <Video
+      {/* Background video - iOS */}
+      {Platform.OS === "ios" && videoPlayer && (
+        <VideoView
           style={styles.backgroundVideo}
-          source={{
-            uri: require("../assets/videos/background-video.mp4"),
-          }}
-          shouldPlay={true}
-          isLooping={true}
-          isMuted={true}
-          resizeMode={ResizeMode.COVER}
-          useNativeControls={false}
+          player={videoPlayer}
+          nativeControls={false}
+          contentFit="cover"
         />
+      )}
+
+      {/* Background video - Web */}
+      {Platform.OS === "web" && (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: "absolute",
+            top: -50,
+            left: 0,
+            bottom: 0,
+            right: 0,
+            width: "100%",
+            height: "110%",
+            objectFit: "cover",
+          }}
+        >
+          <source
+            src={require("../assets/videos/background-video.mp4")}
+            type="video/mp4"
+          />
+        </video>
       )}
 
       {/* Discrete hamburger menu */}
