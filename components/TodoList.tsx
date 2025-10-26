@@ -1,20 +1,3 @@
-import {
-  closestCenter,
-  DndContext,
-  type DragEndEvent,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Mic } from "@tamagui/lucide-icons";
 import { Link } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -25,137 +8,51 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import DraggableFlatList, {
+  type RenderItemParams,
+  ScaleDecorator,
+} from "react-native-draggable-flatlist";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Input } from "tamagui";
 import useTodosManager from "../hooks/useTodosManager";
 import { platformTodoService } from "../services/platformTodoService";
 import type { Todo } from "../types/todo";
 
-function SortableItem({
+function TodoItem({
   item,
+  drag,
+  isActive,
   onComplete,
   onArchive,
-}: {
-  item: Todo;
+}: RenderItemParams<Todo> & {
   onComplete: (id: number) => void;
   onArchive: (id: number) => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 999 : 1,
-  };
-
   return (
-    <div ref={setNodeRef} style={style} {...attributes}>
-      <View style={[styles.itemContainer, isDragging && styles.itemDragging]}>
-        <div {...listeners} style={{ display: "flex", cursor: "grab" }}>
+    <ScaleDecorator>
+      <View style={[styles.itemContainer, isActive && styles.itemDragging]}>
+        <TouchableOpacity onLongPress={drag} activeOpacity={0.9}>
           <GripVertical size={20} color="rgba(255, 255, 255, 0.8)" />
-        </div>
+        </TouchableOpacity>
         <View style={styles.itemContent}>
           <Text style={styles.itemText}>{item.title}</Text>
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button
-              type="button"
-              onClick={() => onComplete(item.id)}
-              style={{
-                backgroundColor: "#38bdf8",
-                border: "1px solid rgba(56, 189, 248, 0.65)",
-                borderRadius: 999,
-                paddingLeft: 18,
-                paddingRight: 18,
-                paddingTop: 10,
-                paddingBottom: 10,
-                color: "#0f172a",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => onComplete(item.id)}
             >
-              Done
-            </button>
-            <button
-              type="button"
-              onClick={() => onArchive(item.id)}
-              style={{
-                backgroundColor: "rgba(56, 189, 248, 0.08)",
-                border: "1px solid rgba(56, 189, 248, 0.35)",
-                borderRadius: 999,
-                paddingLeft: 18,
-                paddingRight: 18,
-                paddingTop: 10,
-                paddingBottom: 10,
-                color: "#e0f2fe",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.archiveButton}
+              onPress={() => onArchive(item.id)}
             >
-              Archive
-            </button>
-          </div>
+              <Text style={styles.archiveButtonText}>Archive</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </div>
-  );
-}
-
-function SortableList({
-  items,
-  onReorder,
-  onComplete,
-  onArchive,
-}: {
-  items: Todo[];
-  onReorder: (items: Todo[]) => void;
-  onComplete: (id: number) => void;
-  onArchive: (id: number) => void;
-}) {
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = items.findIndex((item) => item.id === active.id);
-      const newIndex = items.findIndex((item) => item.id === over.id);
-      onReorder(arrayMove(items, oldIndex, newIndex));
-    }
-  }
-
-  return (
-    <View style={styles.listContainer}>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext items={items} strategy={verticalListSortingStrategy}>
-          {items.map((item) => (
-            <SortableItem
-              key={item.id}
-              item={item}
-              onComplete={onComplete}
-              onArchive={onArchive}
-            />
-          ))}
-        </SortableContext>
-      </DndContext>
-    </View>
+    </ScaleDecorator>
   );
 }
 
@@ -233,123 +130,108 @@ export default function TodoList() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.screenTitle}>Tasks</Text>
-        <Link href="/talk" style={styles.hamburger}>
-          <Mic size={20} color="#38bdf8" />
-        </Link>
-      </View>
-
-      <View style={styles.inputCard}>
-        <Input
-          unstyled
-          value={newTodo}
-          onChangeText={setNewTodo}
-          onSubmitEditing={handleAddTodo}
-          placeholder="Capture a task..."
-          placeholderTextColor="rgba(203,213,225,0.45)"
-          style={styles.input}
-          testID="todo-input"
-          returnKeyType="done"
-        />
-      </View>
-
-      <SortableList
-        items={localTodos}
-        onReorder={handleReorder}
-        onComplete={handleComplete}
-        onArchive={handleArchive}
-      />
-
-      {completedTodos.length > 0 && (
-        <View style={styles.section}>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.toggleButton}
-            onPress={() => setShowCompleted(!showCompleted)}
-          >
-            <Text style={styles.toggleButtonText}>
-              {showCompleted ? "▼" : "▶"} Completed ({completedTodos.length})
-            </Text>
-          </TouchableOpacity>
-
-          {showCompleted && (
-            <View>
-              {completedTodos.map((todo) => (
-                <View key={todo.id} style={styles.completedCard}>
-                  <Text style={styles.completedText}>{todo.title}</Text>
-                  <button
-                    type="button"
-                    onClick={() => handleComplete(todo.id)}
-                    style={{
-                      backgroundColor: "#38bdf8",
-                      border: "1px solid rgba(56, 189, 248, 0.65)",
-                      borderRadius: 999,
-                      paddingLeft: 18,
-                      paddingRight: 18,
-                      paddingTop: 10,
-                      paddingBottom: 10,
-                      color: "#0f172a",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      marginTop: 14,
-                    }}
-                  >
-                    Undo
-                  </button>
-                </View>
-              ))}
-            </View>
-          )}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.screenTitle}>Tasks</Text>
+          <Link href="/talk" style={styles.hamburger}>
+            <Mic size={20} color="#38bdf8" />
+          </Link>
         </View>
-      )}
 
-      {archivedTodos.length > 0 && (
-        <View style={styles.section}>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.toggleButton}
-            onPress={() => setShowArchived(!showArchived)}
-          >
-            <Text style={styles.toggleButtonText}>
-              {showArchived ? "▼" : "▶"} Archived ({archivedTodos.length})
-            </Text>
-          </TouchableOpacity>
-
-          {showArchived && (
-            <View>
-              {archivedTodos.map((todo) => (
-                <View key={todo.id} style={styles.archivedCard}>
-                  <Text style={styles.archivedText}>{todo.title}</Text>
-                  <button
-                    type="button"
-                    onClick={() => handleRestoreArchived(todo.id)}
-                    style={{
-                      backgroundColor: "#38bdf8",
-                      border: "1px solid rgba(56, 189, 248, 0.65)",
-                      borderRadius: 999,
-                      paddingLeft: 18,
-                      paddingRight: 18,
-                      paddingTop: 10,
-                      paddingBottom: 10,
-                      color: "#0f172a",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      marginTop: 14,
-                    }}
-                  >
-                    Restore
-                  </button>
-                </View>
-              ))}
-            </View>
-          )}
+        <View style={styles.inputCard}>
+          <Input
+            unstyled
+            value={newTodo}
+            onChangeText={setNewTodo}
+            onSubmitEditing={handleAddTodo}
+            placeholder="Capture a task..."
+            placeholderTextColor="rgba(203,213,225,0.45)"
+            style={styles.input}
+            testID="todo-input"
+            returnKeyType="done"
+          />
         </View>
-      )}
-    </ScrollView>
+
+        {localTodos.length > 0 && (
+          <View style={styles.listContainer}>
+            <DraggableFlatList
+              data={localTodos}
+              onDragEnd={({ data }) => handleReorder(data)}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={(params) => (
+                <TodoItem
+                  {...params}
+                  onComplete={handleComplete}
+                  onArchive={handleArchive}
+                />
+              )}
+              scrollEnabled={false}
+            />
+          </View>
+        )}
+
+        {completedTodos.length > 0 && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.toggleButton}
+              onPress={() => setShowCompleted(!showCompleted)}
+            >
+              <Text style={styles.toggleButtonText}>
+                {showCompleted ? "▼" : "▶"} Completed ({completedTodos.length})
+              </Text>
+            </TouchableOpacity>
+
+            {showCompleted && (
+              <View>
+                {completedTodos.map((todo) => (
+                  <View key={todo.id} style={styles.completedCard}>
+                    <Text style={styles.completedText}>{todo.title}</Text>
+                    <TouchableOpacity
+                      style={styles.undoButton}
+                      onPress={() => handleComplete(todo.id)}
+                    >
+                      <Text style={styles.undoButtonText}>Undo</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {archivedTodos.length > 0 && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.toggleButton}
+              onPress={() => setShowArchived(!showArchived)}
+            >
+              <Text style={styles.toggleButtonText}>
+                {showArchived ? "▼" : "▶"} Archived ({archivedTodos.length})
+              </Text>
+            </TouchableOpacity>
+
+            {showArchived && (
+              <View>
+                {archivedTodos.map((todo) => (
+                  <View key={todo.id} style={styles.archivedCard}>
+                    <Text style={styles.archivedText}>{todo.title}</Text>
+                    <TouchableOpacity
+                      style={styles.restoreButton}
+                      onPress={() => handleRestoreArchived(todo.id)}
+                    >
+                      <Text style={styles.restoreButtonText}>Restore</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </GestureHandlerRootView>
   );
 }
 
@@ -422,6 +304,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
   },
+  buttonRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 14,
+  },
+  doneButton: {
+    backgroundColor: "#38bdf8",
+    borderWidth: 1,
+    borderColor: "rgba(56, 189, 248, 0.65)",
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  doneButtonText: {
+    color: "#0f172a",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  archiveButton: {
+    backgroundColor: "rgba(56, 189, 248, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(56, 189, 248, 0.35)",
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  archiveButtonText: {
+    color: "#e0f2fe",
+    fontSize: 14,
+    fontWeight: "600",
+  },
   section: {
     marginTop: 24,
   },
@@ -455,6 +368,21 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textDecorationLine: "line-through",
   },
+  undoButton: {
+    backgroundColor: "#38bdf8",
+    borderWidth: 1,
+    borderColor: "rgba(56, 189, 248, 0.65)",
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    marginTop: 14,
+    alignSelf: "flex-start",
+  },
+  undoButtonText: {
+    color: "#0f172a",
+    fontSize: 14,
+    fontWeight: "600",
+  },
   archivedCard: {
     backgroundColor: "rgba(15, 23, 42, 0.65)",
     borderRadius: 20,
@@ -468,5 +396,20 @@ const styles = StyleSheet.create({
     color: "rgba(148, 163, 184, 0.75)",
     fontSize: 16,
     lineHeight: 22,
+  },
+  restoreButton: {
+    backgroundColor: "#38bdf8",
+    borderWidth: 1,
+    borderColor: "rgba(56, 189, 248, 0.65)",
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    marginTop: 14,
+    alignSelf: "flex-start",
+  },
+  restoreButtonText: {
+    color: "#0f172a",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

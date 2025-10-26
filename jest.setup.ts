@@ -28,6 +28,49 @@ jest.mock("react-native-reanimated", () => {
   return Reanimated;
 });
 
+// Mock react-native-gesture-handler
+jest.mock("react-native-gesture-handler", () => {
+  const React = require("react");
+  return {
+    GestureHandlerRootView: ({ children }: { children: React.ReactNode }) =>
+      children,
+    TouchableOpacity: "TouchableOpacity",
+    ScrollView: "ScrollView",
+  };
+});
+
+// Mock react-native-draggable-flatlist
+jest.mock("react-native-draggable-flatlist", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({
+      data,
+      renderItem,
+    }: {
+      data: unknown[];
+      renderItem: (params: {
+        item: unknown;
+        drag: () => void;
+        isActive: boolean;
+      }) => React.ReactNode;
+    }) =>
+      React.createElement(
+        View,
+        null,
+        data.map((item, index) =>
+          React.createElement(
+            React.Fragment,
+            { key: index },
+            renderItem({ item, drag: jest.fn(), isActive: false })
+          )
+        )
+      ),
+    ScaleDecorator: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
+
 // The DevMenu module isn't available in Jest's environment
 jest.mock("react-native/src/private/devsupport/devmenu/DevMenu", () => ({
   show: jest.fn(),
