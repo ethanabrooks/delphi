@@ -31,17 +31,26 @@ interface VoiceService {
   stopSpeaking(): void;
   onAmplitudeData?: (callback: (amplitudes: number[]) => void) => void;
   offAmplitudeData?: () => void;
+  dispose(): void;
 }
 
 class NativeVoiceService implements VoiceService {
   private recording: InstanceType<typeof AudioModule.AudioRecorder> | null =
     null;
+  private isRecording = false;
+  private isSpeaking = false;
 
   isSupported() {
     return true;
   }
 
   async startRecording() {
+    if (this.isRecording) {
+      throw new Error(
+        "Recording already in progress. Call stopRecording() or cancelRecording() first."
+      );
+    }
+
     const permission = await requestRecordingPermissionsAsync();
 
     if (permission.status !== "granted") {
@@ -62,6 +71,7 @@ class NativeVoiceService implements VoiceService {
     await recording.prepareToRecordAsync();
     recording.record();
     this.recording = recording;
+    this.isRecording = true;
   }
 
   async stopRecording(): Promise<VoiceRecording> {
@@ -75,6 +85,7 @@ class NativeVoiceService implements VoiceService {
       await recording.stop();
     } finally {
       this.recording = null;
+      this.isRecording = false;
     }
 
     const status = recording.getStatus();
@@ -103,6 +114,7 @@ class NativeVoiceService implements VoiceService {
       // Ignore cancellation errors
     } finally {
       this.recording = null;
+      this.isRecording = false;
     }
   }
 
@@ -111,17 +123,26 @@ class NativeVoiceService implements VoiceService {
       return;
     }
 
+    if (this.isSpeaking) {
+      this.stopSpeaking();
+    }
+
+    this.isSpeaking = true;
+
     return new Promise<void>((resolve) => {
       Speech.stop();
       Speech.speak(text, {
         rate: 1.0,
         onDone: () => {
+          this.isSpeaking = false;
           resolve();
         },
         onStopped: () => {
+          this.isSpeaking = false;
           resolve();
         },
         onError: () => {
+          this.isSpeaking = false;
           resolve();
         },
       });
@@ -130,6 +151,19 @@ class NativeVoiceService implements VoiceService {
 
   stopSpeaking(): void {
     Speech.stop();
+    this.isSpeaking = false;
+  }
+
+  dispose(): void {
+    this.stopSpeaking();
+    if (this.recording) {
+      this.recording.stop().catch(() => {
+        // Ignore cleanup errors
+      });
+      this.recording = null;
+    }
+    this.isRecording = false;
+    this.isSpeaking = false;
   }
 }
 
@@ -142,6 +176,8 @@ class WebVoiceService implements VoiceService {
   private analyserNode: AnalyserNode | null = null;
   private amplitudeCallback: ((amplitudes: number[]) => void) | null = null;
   private animationFrameId: number | null = null;
+  private isRecording = false;
+  private isSpeaking = false;
 
   isSupported() {
     if (typeof navigator === "undefined") {
@@ -152,6 +188,12 @@ class WebVoiceService implements VoiceService {
   }
 
   async startRecording() {
+    if (this.isRecording) {
+      throw new Error(
+        "Recording already in progress. Call stopRecording() or cancelRecording() first."
+      );
+    }
+
     if (!this.isSupported()) {
       throw new Error("Web Audio API is not supported in this browser");
     }
@@ -173,6 +215,7 @@ class WebVoiceService implements VoiceService {
     mediaRecorder.start();
     this.mediaRecorder = mediaRecorder;
     this.stream = stream;
+    this.isRecording = true;
 
     // Set up Web Audio API for real-time amplitude analysis
     this.setupAudioAnalysis(stream);
@@ -195,6 +238,7 @@ class WebVoiceService implements VoiceService {
         const mimeType = recorder.mimeType || "audio/webm";
         const blob = new Blob(this.audioChunks, { type: mimeType });
         this.cleanup();
+        this.isRecording = false;
         resolve({
           kind: "web",
           blob,
@@ -204,6 +248,7 @@ class WebVoiceService implements VoiceService {
 
       recorder.onerror = (event) => {
         this.cleanup();
+        this.isRecording = false;
         reject(event.error || new Error("Recording failed"));
       };
 
@@ -221,6 +266,7 @@ class WebVoiceService implements VoiceService {
     }
 
     this.cleanup();
+    this.isRecording = false;
   }
 
   async speak(text: string, options?: { apiKey?: string }) {
@@ -229,13 +275,25 @@ class WebVoiceService implements VoiceService {
     }
 
     // Stop any ongoing speech before starting new speech
-    this.stopSpeaking();
+    if (this.isSpeaking) {
+      this.stopSpeaking();
+    }
+
+    this.isSpeaking = true;
 
     const speakWithWebSpeech = () => {
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 1.0;
+        utterance.onend = () => {
+          this.isSpeaking = false;
+        };
+        utterance.onerror = () => {
+          this.isSpeaking = false;
+        };
         window.speechSynthesis.speak(utterance);
+      } else {
+        this.isSpeaking = false;
       }
     };
 
@@ -277,12 +335,14 @@ class WebVoiceService implements VoiceService {
         URL.revokeObjectURL(url);
         if (this.activeAudio === audio) {
           this.activeAudio = null;
+          this.isSpeaking = false;
         }
       });
 
       audio.addEventListener("pause", () => {
         if (this.activeAudio === audio) {
           this.activeAudio = null;
+          this.isSpeaking = false;
         }
       });
     } catch {
@@ -306,6 +366,8 @@ class WebVoiceService implements VoiceService {
       }
       this.activeAudio = null;
     }
+
+    this.isSpeaking = false;
   }
 
   onAmplitudeData(callback: (amplitudes: number[]) => void) {
@@ -318,6 +380,14 @@ class WebVoiceService implements VoiceService {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+  }
+
+  dispose(): void {
+    this.stopSpeaking();
+    this.offAmplitudeData();
+    this.cleanup();
+    this.isRecording = false;
+    this.isSpeaking = false;
   }
 
   private setupAudioAnalysis(stream: MediaStream) {

@@ -56,6 +56,40 @@ npx jest --testNamePattern="should add todo"
 - **OpenAI Client** (`services/openaiClient.ts`) provides typed API wrappers with Zod validation
 - Talk component handles voice UI and orchestration
 
+#### VoiceService Lifecycle & Resource Management
+
+**Concurrency Guards:**
+- `startRecording()` throws if called while recording is already in progress
+- `speak()` automatically stops any ongoing speech before starting new speech
+- Guards prevent resource leaks from concurrent operations
+
+**Resource Cleanup:**
+- `dispose()` method stops all active resources (recording, speech, amplitude monitoring)
+- Consumers must call `dispose()` in cleanup (e.g., useEffect return function)
+- `stopSpeaking()` should be called before starting new recordings
+- `offAmplitudeData()` cancels animation frames for amplitude monitoring
+
+**Proper Usage Pattern:**
+```typescript
+useEffect(() => {
+  // Setup amplitude callback if needed
+  if (voiceService.onAmplitudeData) {
+    voiceService.onAmplitudeData(callback);
+  }
+
+  return () => {
+    voiceService.stopSpeaking();      // Stop any ongoing speech
+    voiceService.cancelRecording();   // Cancel recording if active
+    voiceService.dispose();           // Clean up all resources
+  };
+}, []);
+```
+
+**State Management:**
+- Both native and web implementations track `isRecording` and `isSpeaking` states
+- State is properly cleared in all cleanup paths (stop, cancel, dispose)
+- Error paths ensure state consistency
+
 ### UI Architecture
 - **Tamagui** components for consistent design system
 - Manual screen switching in `App.tsx` (not Expo Router)

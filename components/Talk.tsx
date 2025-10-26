@@ -58,10 +58,9 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     }
 
     return () => {
+      voiceService.stopSpeaking();
       void voiceService.cancelRecording();
-      if (voiceService.offAmplitudeData) {
-        voiceService.offAmplitudeData();
-      }
+      voiceService.dispose();
     };
   }, []);
 

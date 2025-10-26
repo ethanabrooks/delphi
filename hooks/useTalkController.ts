@@ -70,7 +70,9 @@ export function useTalkController({
     setIsSupported(voiceService.isSupported());
 
     return () => {
+      voiceService.stopSpeaking();
       void voiceService.cancelRecording();
+      voiceService.dispose();
     };
   }, []);
 
