@@ -95,10 +95,16 @@ ${activeTodos
       timeZoneName: "short",
     });
 
-    return readSystemPromptTemplate({
-      currentDateTime,
-      activeTodosContext,
-    });
+    try {
+      return await readSystemPromptTemplate({
+        currentDateTime,
+        activeTodosContext,
+      });
+    } catch (_error) {
+      return `You are a helpful AI assistant that manages a todo list. The current date and time is: ${currentDateTime}.${activeTodosContext}
+
+You have access to tools to help users manage their todos. Be concise and helpful.`;
+    }
   }
 
   private async ensureSystemMessage(): Promise<void> {
@@ -140,10 +146,15 @@ ${activeTodos
       .map((m) => `${m.role}: ${m.content || "[tool call]"}`)
       .join("\n");
 
-    // Load the summarization prompt template
-    const summarizationPrompt = await readSummarizationPromptTemplate({
-      conversationHistory,
-    });
+    // Load the summarization prompt template with fallback
+    let summarizationPrompt: string;
+    try {
+      summarizationPrompt = await readSummarizationPromptTemplate({
+        conversationHistory,
+      });
+    } catch (_error) {
+      summarizationPrompt = `Please provide a concise summary of the following conversation history in 2-3 sentences, focusing on key decisions, actions taken, and important context:\n\n${conversationHistory}`;
+    }
 
     const summaryResponse = await this.client?.createChatCompletion({
       model: "gpt-4o",
