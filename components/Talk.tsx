@@ -3,12 +3,14 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
   TextInput,
   TouchableOpacity,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, View } from "tamagui";
 import { useConversationAgent } from "../hooks/useConversationAgent";
 import OpenAIClient from "../services/openaiClient";
@@ -21,6 +23,7 @@ interface TalkProps {
 }
 
 export default function Talk({ apiKey, customProcessor }: TalkProps) {
+  const insets = useSafeAreaInsets();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [_transcript, setTranscript] = useState("");
@@ -250,75 +253,111 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         </video>
       )}
 
-      {/* Discrete hamburger menu */}
-      <Link href="/todo" style={styles.hamburger}>
-        <Text style={styles.hamburgerText}>☰</Text>
-      </Link>
+      <View style={styles.overlay} />
 
-      {/* Press and hold to record */}
-      <Pressable
-        style={styles.recordArea}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Math.max(insets.top, 24)}
       >
-        {/* Recording indicator */}
-        {(isRecording || isProcessing) && (
-          <View style={styles.indicator}>
-            {isRecording ? (
-              <SoundWaveAnimation
-                isActive={true}
-                amplitudeData={amplitudeData}
-                color="#ffffff"
-              />
-            ) : (
-              <Text style={styles.indicatorText}>Processing...</Text>
-            )}
-          </View>
-        )}
-
-        {/* Dialogue text display */}
-        {(_transcript || _response) && (
-          <View style={styles.dialogueContainer}>
-            {_transcript && (
-              <View style={styles.userMessage}>
-                <Text style={styles.userLabel}>You:</Text>
-                <Text style={styles.userText}>{_transcript}</Text>
-              </View>
-            )}
-            {_response && (
-              <View style={styles.assistantMessage}>
-                <Text style={styles.assistantLabel}>Assistant:</Text>
-                <Text style={styles.assistantText}>{_response}</Text>
-              </View>
-            )}
-          </View>
-        )}
-      </Pressable>
-
-      {/* Text input area */}
-      <View style={styles.textInputContainer}>
-        <TextInput
-          style={styles.textInput}
-          value={textInput}
-          onChangeText={setTextInput}
-          placeholder="Type a message..."
-          placeholderTextColor="#888888"
-          editable={!isProcessing}
-          onSubmitEditing={handleTextSubmit}
-          returnKeyType="send"
-          multiline={false}
-        />
-        <TouchableOpacity
+        <View
           style={[
-            styles.sendButton,
-            (!textInput.trim() || isProcessing) && styles.sendButtonDisabled,
+            styles.safeArea,
+            {
+              paddingTop: Math.max(insets.top, 24),
+              paddingBottom: Math.max(insets.bottom, 28),
+            },
           ]}
-          onPress={handleTextSubmit}
-          disabled={!textInput.trim() || isProcessing}
         >
-          <Text style={styles.sendButtonText}>➤</Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.header}>
+            <Link href="/todo" style={styles.hamburger}>
+              <Text style={styles.hamburgerText}>☰</Text>
+            </Link>
+          </View>
+
+          <Pressable
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            style={({ pressed }) => [
+              styles.voiceButton,
+              (isRecording || isProcessing) && styles.voiceButtonActive,
+              pressed &&
+                !(isRecording || isProcessing) &&
+                styles.voiceButtonPressed,
+            ]}
+          >
+            <View style={styles.voiceContent}>
+              {isRecording ? (
+                <View style={styles.waveWrapper}>
+                  <SoundWaveAnimation
+                    isActive={true}
+                    amplitudeData={amplitudeData}
+                    color="#38bdf8"
+                  />
+                  <Text style={styles.voiceStatus}>Listening...</Text>
+                </View>
+              ) : isProcessing ? (
+                <Text style={styles.voiceStatus}>Processing...</Text>
+              ) : (
+                <>
+                  <Text style={styles.voiceTitle}>Hold to Talk</Text>
+                  <Text style={styles.voiceSubtitle}>
+                    Press and speak to share what you need
+                  </Text>
+                </>
+              )}
+            </View>
+          </Pressable>
+
+          <View style={styles.dialogueWrapper}>
+            {_transcript || _response ? (
+              <View style={styles.messagesContainer}>
+                {_transcript && (
+                  <View style={[styles.messageBubble, styles.userMessage]}>
+                    <Text style={styles.messageLabel}>You</Text>
+                    <Text style={styles.messageText}>{_transcript}</Text>
+                  </View>
+                )}
+                {_response && (
+                  <View style={[styles.messageBubble, styles.assistantMessage]}>
+                    <Text style={styles.messageLabel}>Assistant</Text>
+                    <Text style={styles.messageText}>{_response}</Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <Text style={styles.placeholderText}>
+                Your conversation will appear here.
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.textInput}
+              value={textInput}
+              onChangeText={setTextInput}
+              placeholder="Type a message..."
+              placeholderTextColor="rgba(203,213,225,0.45)"
+              editable={!isProcessing}
+              onSubmitEditing={handleTextSubmit}
+              returnKeyType="send"
+              multiline={false}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                (!textInput.trim() || isProcessing) &&
+                  styles.sendButtonDisabled,
+              ]}
+              onPress={handleTextSubmit}
+              disabled={!textInput.trim() || isProcessing}
+            >
+              <Text style={styles.sendButtonText}>➤</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -327,6 +366,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Platform.OS === "web" ? "#000000" : "transparent",
+  },
+  flex: {
+    flex: 1,
   },
   backgroundVideo: {
     position: "absolute",
@@ -337,115 +379,160 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "110%",
   },
-  hamburger: {
+  overlay: {
     position: "absolute",
-    top: 60,
-    right: 20,
-    zIndex: 10,
-    padding: 10,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(15, 23, 42, 0.35)",
   },
-  hamburgerText: {
-    fontSize: 24,
-    color: "#ffffff",
-  },
-  recordArea: {
+  safeArea: {
     flex: 1,
+    paddingHorizontal: 24,
+    width: "100%",
+    maxWidth: 520,
+    alignSelf: "center",
+  },
+  header: {
+    width: "100%",
+    alignItems: "flex-end",
+    marginBottom: 32,
+  },
+  hamburger: {
+    minHeight: 36,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
   },
-  indicator: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+  hamburgerText: {
+    fontSize: 20,
+    color: "rgba(248, 250, 252, 0.85)",
   },
-  indicatorText: {
-    color: "#ffffff",
+  voiceButton: {
+    borderRadius: 28,
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.18)",
+  },
+  voiceButtonPressed: {
+    backgroundColor: "rgba(15, 23, 42, 0.75)",
+  },
+  voiceButtonActive: {
+    backgroundColor: "rgba(8, 47, 73, 0.65)",
+    borderColor: "rgba(56, 189, 248, 0.6)",
+  },
+  voiceContent: {
+    alignItems: "center",
+  },
+  waveWrapper: {
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 12,
+  },
+  voiceTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#f8fafc",
+  },
+  voiceSubtitle: {
+    fontSize: 14,
+    color: "rgba(226, 232, 240, 0.75)",
+    marginTop: 6,
+    textAlign: "center",
+  },
+  voiceStatus: {
     fontSize: 16,
     fontWeight: "500",
+    color: "#e0f2fe",
+    textAlign: "center",
   },
-  dialogueContainer: {
-    position: "absolute",
-    bottom: 80,
-    left: 20,
-    right: 20,
-    maxHeight: "40%",
+  dialogueWrapper: {
+    flex: 1,
+    width: "100%",
+    justifyContent: "flex-end",
+    marginTop: 36,
+  },
+  messagesContainer: {
+    width: "100%",
+  },
+  messageBubble: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginBottom: 12,
   },
   userMessage: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  userLabel: {
-    color: "#888888",
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  userText: {
-    color: "#ffffff",
-    fontSize: 14,
-    lineHeight: 20,
+    alignSelf: "flex-end",
+    backgroundColor: "rgba(248, 250, 252, 0.08)",
+    borderColor: "rgba(248, 250, 252, 0.12)",
   },
   assistantMessage: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    padding: 12,
-    borderRadius: 8,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(15, 23, 42, 0.55)",
+    borderColor: "rgba(148, 163, 184, 0.18)",
+    marginBottom: 0,
   },
-  assistantLabel: {
-    color: "#aaaaaa",
-    fontSize: 12,
+  messageLabel: {
+    fontSize: 11,
     fontWeight: "600",
-    marginBottom: 4,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    color: "rgba(226, 232, 240, 0.6)",
+    marginBottom: 6,
   },
-  assistantText: {
-    color: "#ffffff",
+  messageText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#f1f5f9",
+  },
+  placeholderText: {
     fontSize: 14,
-    lineHeight: 20,
+    color: "rgba(226, 232, 240, 0.55)",
+    textAlign: "center",
   },
-  textInputContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+  inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "transparent",
-    paddingLeft: 32,
-    paddingRight: 32,
-    paddingTop: 32,
-    paddingBottom: Platform.OS === "ios" ? 48 : 32,
+    width: "100%",
+    marginTop: 28,
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.2)",
+    paddingLeft: 20,
+    paddingRight: 8,
+    paddingVertical: 6,
   },
   textInput: {
     flex: 1,
-    backgroundColor: "#2a2a2a",
-    color: "#ffffff",
+    color: "#f8fafc",
     fontSize: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 28,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: "#3a3a3a",
+    paddingVertical: 10,
+    paddingRight: 12,
   },
   sendButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#4a4a4a",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#38bdf8",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#5a5a5a",
+    marginLeft: 8,
   },
   sendButtonDisabled: {
-    backgroundColor: "#2a2a2a",
-    borderColor: "#2a2a2a",
+    backgroundColor: "rgba(148, 163, 184, 0.25)",
   },
   sendButtonText: {
-    color: "#ffffff",
-    fontSize: 22,
-    fontWeight: "600",
+    color: "#0f172a",
+    fontSize: 20,
+    fontWeight: "700",
   },
 });
