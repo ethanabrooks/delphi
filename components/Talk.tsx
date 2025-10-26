@@ -18,7 +18,6 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [_transcript, setTranscript] = useState("");
   const [_response, setResponse] = useState("");
-  const [conversationId, setConversationId] = useState<string | undefined>();
   const [isSupported, setIsSupported] = useState(() =>
     voiceService.isSupported()
   );
@@ -133,12 +132,6 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
         aiResponse = await customProcessor(userText);
       } else {
         aiResponse = await conversationAgent.processMessage(userText);
-
-        // Update conversation ID for state tracking
-        const newConversationId = conversationAgent.getConversationId();
-        if (newConversationId && newConversationId !== conversationId) {
-          setConversationId(newConversationId);
-        }
       }
 
       setResponse(aiResponse);
@@ -172,13 +165,6 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     if (isRecording) {
       await stopRecording();
     }
-  };
-
-  const _clearConversation = () => {
-    conversationAgent.clearConversation();
-    setConversationId(undefined);
-    setTranscript("");
-    setResponse("");
   };
 
   return (

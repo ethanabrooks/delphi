@@ -1,8 +1,8 @@
+import { Mic } from "@tamagui/lucide-icons";
 import { Link } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Alert, Animated, StyleSheet } from "react-native";
 import { Button, Card, Input, ScrollView, Text, View, XStack } from "tamagui";
-import { Mic } from "@tamagui/lucide-icons";
 import useTodosManager from "../hooks/useTodosManager";
 import type { Todo } from "../types/todo";
 import { getNextHighestPriority } from "../utils/priorityUtils";

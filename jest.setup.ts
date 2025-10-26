@@ -141,8 +141,24 @@ jest.mock("tamagui", () => {
     Input,
     ScrollView: wrap(RNScrollView),
     Text: wrap(RNText),
+    View: wrap(View),
     XStack: wrap(View),
     YStack: wrap(View),
+  };
+});
+
+// Mock Tamagui Lucide icons
+jest.mock("@tamagui/lucide-icons", () => {
+  const React = require("react") as typeof import("react");
+  const { View } = require("react-native");
+
+  const MockIcon = React.forwardRef<
+    unknown,
+    { children?: ReactNode } & Record<string, unknown>
+  >((props, ref) => React.createElement(View, { ref, ...props }));
+
+  return {
+    Mic: MockIcon,
   };
 });
 
@@ -180,22 +196,42 @@ console.error = (...args: unknown[]) => {
 };
 
 // Mock expo-router for navigation tests
-jest.mock("expo-router", () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    back: jest.fn(),
-    canGoBack: jest.fn().mockReturnValue(false),
-  }),
-  useLocalSearchParams: () => ({}),
-  usePathname: () => "/",
-  router: {
-    push: jest.fn(),
-    replace: jest.fn(),
-    back: jest.fn(),
-    canGoBack: jest.fn().mockReturnValue(false),
-  },
-}));
+jest.mock("expo-router", () => {
+  const React = require("react") as typeof import("react");
+  const { Pressable } = require("react-native");
+
+  const Link = React.forwardRef<
+    unknown,
+    { children?: ReactNode; href?: string } & Record<string, unknown>
+  >(
+    (
+      {
+        children,
+        href,
+        ...rest
+      }: { children?: ReactNode; href?: string } & Record<string, unknown>,
+      ref: Ref<unknown>
+    ) => React.createElement(Pressable, { ref, ...rest }, children)
+  );
+
+  return {
+    useRouter: () => ({
+      push: jest.fn(),
+      replace: jest.fn(),
+      back: jest.fn(),
+      canGoBack: jest.fn().mockReturnValue(false),
+    }),
+    useLocalSearchParams: () => ({}),
+    usePathname: () => "/",
+    router: {
+      push: jest.fn(),
+      replace: jest.fn(),
+      back: jest.fn(),
+      canGoBack: jest.fn().mockReturnValue(false),
+    },
+    Link,
+  };
+});
 
 // Global TodoService mock with simple synchronous behavior
 jest.mock("./services/todoService", () => ({

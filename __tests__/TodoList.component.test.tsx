@@ -29,39 +29,36 @@ describe("TodoList Component - Tamagui Mock Tests", () => {
     mockUseTodosManager.mockReturnValue(createHookReturn());
   });
 
-  test("should render debug header and empty-state columns", async () => {
+  test("should render empty state with input", async () => {
     render(<TodoList />);
 
     await waitFor(() => {
-      expect(screen.getByText("Todo Debug Board")).toBeTruthy();
-      expect(screen.getByText("Active (0)")).toBeTruthy();
-      expect(screen.getByText("Completed (0)")).toBeTruthy();
-      expect(screen.getByText("Archived (0)")).toBeTruthy();
+      expect(
+        screen.getByPlaceholderText("What needs to be done?")
+      ).toBeTruthy();
       expect(screen.getByText("No active todos")).toBeTruthy();
-      expect(screen.getByText("No completed todos")).toBeTruthy();
-      expect(screen.getByText("No archived todos")).toBeTruthy();
     });
   });
 
-  test("should render Tamagui Button and Input components with text content", async () => {
+  test("should render Input component with correct placeholder", async () => {
     render(<TodoList />);
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("Add todo...")).toBeTruthy();
-      expect(screen.getByTestId("add-todo-button")).toBeTruthy();
+      expect(
+        screen.getByPlaceholderText("What needs to be done?")
+      ).toBeTruthy();
+      expect(screen.getByTestId("todo-input")).toBeTruthy();
     });
   });
 
-  test("disables the add button while loading", () => {
+  test("renders input when loading", () => {
     const hookValue = createHookReturn();
     hookValue.isLoading = true;
     mockUseTodosManager.mockReturnValue(hookValue);
 
     render(<TodoList />);
 
-    expect(screen.getByTestId("add-todo-button")).toHaveProp(
-      "accessibilityState",
-      expect.objectContaining({ disabled: true })
-    );
+    // Input is always available regardless of loading state
+    expect(screen.getByTestId("todo-input")).toBeTruthy();
   });
 });

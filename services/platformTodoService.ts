@@ -249,16 +249,8 @@ class WebTodoService {
 
   static async deleteTodo(id: number): Promise<boolean> {
     const todos = WebTodoService.read();
-    const todoToDelete = todos.find((t) => t.id === id);
-
-    if (todoToDelete) {
-    }
-
     const filtered = todos.filter((todo) => todo.id !== id);
     WebTodoService.write(filtered);
-
-    if (todoToDelete) {
-    }
 
     return filtered.length !== todos.length;
   }
