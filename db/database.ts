@@ -11,12 +11,10 @@ type OpenDatabaseAsync = (name: string) => Promise<ExpoDatabaseHandle>;
 let dbInstance: ReturnType<typeof drizzle> | null = null;
 let expoInstance: ExpoDatabaseHandle | null = null;
 
-const loadOpenDatabaseAsync = async (): Promise<OpenDatabaseAsync> => {
-  // Use require in test environment to allow jest.doMock to work
-  const sqliteModule =
-    process.env.NODE_ENV === "test"
-      ? require("expo-sqlite")
-      : await import("expo-sqlite");
+const loadOpenDatabaseAsync = (): OpenDatabaseAsync => {
+  // Use require() instead of dynamic import() because Metro bundler
+  // fails static analysis on dynamic imports during pre-commit hooks
+  const sqliteModule = require("expo-sqlite");
 
   const candidate =
     (sqliteModule as { openDatabaseAsync?: OpenDatabaseAsync })
@@ -33,7 +31,7 @@ const loadOpenDatabaseAsync = async (): Promise<OpenDatabaseAsync> => {
 
 const getDatabase = async () => {
   if (!dbInstance) {
-    const openDatabaseAsync = await loadOpenDatabaseAsync();
+    const openDatabaseAsync = loadOpenDatabaseAsync();
     expoInstance = await openDatabaseAsync("todos.db");
     // For tests, we might not need a real drizzle instance, just something truthy
     try {
@@ -57,7 +55,7 @@ export const initializeDatabase = async () => {
   dbInstance = null;
   expoInstance = null;
 
-  const openDatabaseAsync = await loadOpenDatabaseAsync();
+  const openDatabaseAsync = loadOpenDatabaseAsync();
   const databaseHandle = await openDatabaseAsync("todos.db");
   expoInstance = databaseHandle;
 
