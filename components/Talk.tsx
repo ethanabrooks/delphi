@@ -1,7 +1,14 @@
 import { Link } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Platform, Pressable, StyleSheet } from "react-native";
+import {
+  Alert,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+} from "react-native";
 import { Text, View } from "tamagui";
 import { useConversationAgent } from "../hooks/useConversationAgent";
 import OpenAIClient from "../services/openaiClient";
@@ -22,6 +29,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     voiceService.isSupported()
   );
   const [amplitudeData, setAmplitudeData] = useState<number[]>([]);
+  const [textInput, setTextInput] = useState("");
 
   // Create video player (iOS will use it, web won't)
   const videoPlayer = useVideoPlayer(
@@ -174,6 +182,37 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     }
   };
 
+  const handleTextSubmit = async () => {
+    if (!textInput.trim() || isProcessing) {
+      return;
+    }
+
+    const userText = textInput.trim();
+    setTextInput("");
+    setTranscript(userText);
+    setIsProcessing(true);
+
+    try {
+      // Stop any ongoing speech before processing new text
+      voiceService.stopSpeaking();
+
+      let aiResponse: string;
+
+      if (customProcessor) {
+        aiResponse = await customProcessor(userText);
+      } else {
+        aiResponse = await conversationAgent.processMessage(userText);
+      }
+
+      setResponse(aiResponse);
+      await voiceService.speak(aiResponse, { apiKey });
+    } catch {
+      setResponse("Sorry, I could not process your text input.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Background video - iOS */}
@@ -255,6 +294,31 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
           </View>
         )}
       </Pressable>
+
+      {/* Text input area */}
+      <View style={styles.textInputContainer}>
+        <TextInput
+          style={styles.textInput}
+          value={textInput}
+          onChangeText={setTextInput}
+          placeholder="Type a message..."
+          placeholderTextColor="#888888"
+          editable={!isProcessing}
+          onSubmitEditing={handleTextSubmit}
+          returnKeyType="send"
+          multiline={false}
+        />
+        <TouchableOpacity
+          style={[
+            styles.sendButton,
+            (!textInput.trim() || isProcessing) && styles.sendButtonDisabled,
+          ]}
+          onPress={handleTextSubmit}
+          disabled={!textInput.trim() || isProcessing}
+        >
+          <Text style={styles.sendButtonText}>➤</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -302,7 +366,7 @@ const styles = StyleSheet.create({
   },
   dialogueContainer: {
     position: "absolute",
-    bottom: 60,
+    bottom: 80,
     left: 20,
     right: 20,
     maxHeight: "40%",
@@ -339,5 +403,51 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 14,
     lineHeight: 20,
+  },
+  textInputContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === "ios" ? 36 : 16,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.05)",
+  },
+  textInput: {
+    flex: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    color: "#ffffff",
+    fontSize: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 28,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  sendButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  sendButtonDisabled: {
+    opacity: 0.4,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: "rgba(255, 255, 255, 0.05)",
+  },
+  sendButtonText: {
+    color: "#ffffff",
+    fontSize: 22,
+    fontWeight: "600",
   },
 });
