@@ -1,10 +1,11 @@
 import { Mic } from "@tamagui/lucide-icons";
 import { Link } from "expo-router";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
   StyleSheet,
   TouchableOpacity,
@@ -31,8 +32,8 @@ export default function TodoList() {
   const [newTodo, setNewTodo] = useState("");
   const [showCompleted, setShowCompleted] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
-  const completedAnimation = new Animated.Value(0);
-  const archivedAnimation = new Animated.Value(0);
+  const completedAnimation = useRef(new Animated.Value(0)).current;
+  const archivedAnimation = useRef(new Animated.Value(0)).current;
   const {
     todos,
     stats,
@@ -99,6 +100,9 @@ export default function TodoList() {
   );
 
   const toggleCompletedSection = useCallback(() => {
+    if (Platform.OS === "ios" || Platform.OS === "android") {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
     const toValue = showCompleted ? 0 : 1;
     setShowCompleted(!showCompleted);
 
@@ -107,9 +111,12 @@ export default function TodoList() {
       duration: 300,
       useNativeDriver: false,
     }).start();
-  }, [showCompleted, completedAnimation]);
+  }, [showCompleted]);
 
   const toggleArchivedSection = useCallback(() => {
+    if (Platform.OS === "ios" || Platform.OS === "android") {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
     const toValue = showArchived ? 0 : 1;
     setShowArchived(!showArchived);
 
@@ -118,7 +125,7 @@ export default function TodoList() {
       duration: 300,
       useNativeDriver: false,
     }).start();
-  }, [showArchived, archivedAnimation]);
+  }, [showArchived]);
 
   // Keyboard navigation support
 
