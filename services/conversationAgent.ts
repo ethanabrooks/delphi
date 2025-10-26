@@ -100,7 +100,12 @@ ${activeTodos
         currentDateTime,
         activeTodosContext,
       });
-    } catch (_error) {
+    } catch (error) {
+      // biome-ignore lint/suspicious/noConsole: diagnostic logging for template loading failures
+      console.warn(
+        "Failed to load system prompt template, using fallback:",
+        error
+      );
       return `You are a helpful AI assistant that manages a todo list. The current date and time is: ${currentDateTime}.${activeTodosContext}
 
 You have access to tools to help users manage their todos. Be concise and helpful.`;
@@ -152,7 +157,12 @@ You have access to tools to help users manage their todos. Be concise and helpfu
       summarizationPrompt = await readSummarizationPromptTemplate({
         conversationHistory,
       });
-    } catch (_error) {
+    } catch (error) {
+      // biome-ignore lint/suspicious/noConsole: diagnostic logging for template loading failures
+      console.warn(
+        "Failed to load summarization prompt template, using fallback:",
+        error
+      );
       summarizationPrompt = `Please provide a concise summary of the following conversation history in 2-3 sentences, focusing on key decisions, actions taken, and important context:\n\n${conversationHistory}`;
     }
 
