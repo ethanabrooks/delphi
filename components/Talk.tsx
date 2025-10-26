@@ -313,13 +313,25 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
             {_transcript || _response ? (
               <View style={styles.messagesContainer}>
                 {_transcript && (
-                  <View style={[styles.messageBubble, styles.userMessage]}>
+                  <View
+                    style={[
+                      styles.messageBubble,
+                      styles.userMessage,
+                      Platform.OS === "web" && styles.messageBubbleWeb,
+                    ]}
+                  >
                     <Text style={styles.messageLabel}>You</Text>
                     <Text style={styles.messageText}>{_transcript}</Text>
                   </View>
                 )}
                 {_response && (
-                  <View style={[styles.messageBubble, styles.assistantMessage]}>
+                  <View
+                    style={[
+                      styles.messageBubble,
+                      styles.assistantMessage,
+                      Platform.OS === "web" && styles.messageBubbleWeb,
+                    ]}
+                  >
                     <Text style={styles.messageLabel}>Assistant</Text>
                     <Text style={styles.messageText}>{_response}</Text>
                   </View>
@@ -334,7 +346,10 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
 
           <View style={styles.inputRow}>
             <TextInput
-              style={styles.textInput}
+              style={[
+                styles.textInput,
+                Platform.OS === "web" && styles.textInputWeb,
+              ]}
               value={textInput}
               onChangeText={setTextInput}
               placeholder="Type a message..."
@@ -347,6 +362,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
             <TouchableOpacity
               style={[
                 styles.sendButton,
+                Platform.OS === "web" && styles.sendButtonWeb,
                 (!textInput.trim() || isProcessing) &&
                   styles.sendButtonDisabled,
               ]}
@@ -463,11 +479,21 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   messageBubble: {
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: 18,
+    paddingTop: 14,
+    paddingBottom: 14,
+    paddingLeft: 18,
+    paddingRight: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 14,
+    maxWidth: "88%",
+    flexShrink: 1,
+  },
+  messageBubbleWeb: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingLeft: 24,
+    paddingRight: 24,
   },
   userMessage: {
     alignSelf: "flex-end",
@@ -485,7 +511,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 0.6,
     textTransform: "uppercase",
-    color: "rgba(226, 232, 240, 0.6)",
+    color: "rgba(226, 232, 240, 0.7)",
     marginBottom: 6,
   },
   messageText: {
@@ -518,6 +544,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingRight: 12,
   },
+  textInputWeb: {
+    outlineWidth: 0,
+    outlineStyle: "none",
+  } as const as any,
   sendButton: {
     width: 44,
     height: 44,
@@ -530,6 +560,11 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     backgroundColor: "rgba(148, 163, 184, 0.25)",
   },
+  sendButtonWeb: {
+    outlineWidth: 0,
+    outlineStyle: "none",
+    marginVertical: 8,
+  } as const as any,
   sendButtonText: {
     color: "#0f172a",
     fontSize: 20,
