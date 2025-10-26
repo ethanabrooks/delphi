@@ -3,7 +3,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Platform, Pressable, StyleSheet } from "react-native";
 import { Text, View } from "tamagui";
-import { ConversationAgent } from "../services/conversationAgent";
+import { useConversationAgent } from "../hooks/useConversationAgent";
 import OpenAIClient from "../services/openaiClient";
 import voiceService, { type VoiceRecording } from "../services/voiceService";
 import SoundWaveAnimation from "./SoundWaveAnimation";
@@ -45,16 +45,7 @@ export default function Talk({ apiKey, customProcessor }: TalkProps) {
     }
   }, [apiKey]);
 
-  const conversationAgent = useMemo(() => {
-    return new ConversationAgent(apiKey);
-  }, [apiKey]);
-
-  // Cleanup conversation agent on unmount or when apiKey changes
-  useEffect(() => {
-    return () => {
-      conversationAgent.dispose();
-    };
-  }, [conversationAgent]);
+  const { agent: conversationAgent } = useConversationAgent({ apiKey });
 
   useEffect(() => {
     setIsSupported(voiceService.isSupported());
