@@ -1,5 +1,6 @@
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system";
+import { Platform } from "react-native";
 
 /**
  * Generic template loader with interpolation
@@ -14,12 +15,25 @@ async function loadTemplate(
 
   await asset.downloadAsync();
 
-  if (!asset.localUri) {
-    throw new Error("Failed to load prompt template");
-  }
+  let template: string;
 
-  // Read the template content
-  const template = await FileSystem.readAsStringAsync(asset.localUri);
+  if (Platform.OS === "web") {
+    // On web, use fetch to load the asset via HTTP
+    if (!asset.uri) {
+      throw new Error("Failed to load prompt template - no URI");
+    }
+    const response = await fetch(asset.uri);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch template: ${response.statusText}`);
+    }
+    template = await response.text();
+  } else {
+    // On native platforms, use FileSystem
+    if (!asset.localUri) {
+      throw new Error("Failed to load prompt template - no localUri");
+    }
+    template = await FileSystem.readAsStringAsync(asset.localUri);
+  }
 
   // Simple template interpolation
   let result = template;
