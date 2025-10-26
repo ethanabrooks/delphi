@@ -172,3 +172,37 @@ const { agent, messages, conversationId, processMessage } =
 2. Disposal happens automatically on component unmount (when using hook)
 3. New agent instance created when API key changes
 4. No stale conversation state persists across remounts
+
+### ConversationAgent Error Handling
+
+The `ConversationAgent` is hardened against asset loading failures for prompt templates. This ensures the app remains functional even when template files fail to load.
+
+**Prompt Loading Strategy:**
+- System prompt template loaded from `prompts/conversation-agent-system-prompt.txt`
+- Summarization prompt template loaded from `prompts/conversation-summarization-prompt.txt`
+- Both templates use try/catch with graceful fallbacks
+
+**Error Handling Pattern:**
+```typescript
+try {
+  return await readSystemPromptTemplate({ currentDateTime, activeTodosContext });
+} catch (error) {
+  console.warn("Failed to load system prompt template, using fallback:", error);
+  return `[Minimal fallback prompt text with essential context]`;
+}
+```
+
+**Fallback Behavior:**
+- `buildSystemPrompt()` - Falls back to minimal static prompt including current date/time and active todos context
+- `compactConversation()` - Falls back to basic summarization instruction when template unavailable
+- Errors logged via `console.warn` for diagnostics without breaking app flow
+- Agent continues to function with reduced prompt sophistication
+
+**Testing:**
+- Mock prompt loader failures via `jest.mock("../services/promptLoader")`
+- Verify fallback prompts are used and contain essential context
+- Ensure `processMessage()` succeeds despite template loading errors
+- Tests located in `__tests__/conversationAgent.errorHandling.test.ts`
+
+**Key Principle:**
+Supporting services (like prompt template loading) must never crash the agent. Always provide fallbacks that maintain core functionality, log failures for observability, and degrade gracefully.
