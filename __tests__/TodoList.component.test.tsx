@@ -33,9 +33,7 @@ describe("TodoList Component - Tamagui Mock Tests", () => {
     render(<TodoList />);
 
     await waitFor(() => {
-      expect(
-        screen.getByPlaceholderText("What needs to be done?")
-      ).toBeTruthy();
+      expect(screen.getByPlaceholderText("Capture a task...")).toBeTruthy();
       expect(screen.getByText("No active todos")).toBeTruthy();
     });
   });
@@ -44,9 +42,7 @@ describe("TodoList Component - Tamagui Mock Tests", () => {
     render(<TodoList />);
 
     await waitFor(() => {
-      expect(
-        screen.getByPlaceholderText("What needs to be done?")
-      ).toBeTruthy();
+      expect(screen.getByPlaceholderText("Capture a task...")).toBeTruthy();
       expect(screen.getByTestId("todo-input")).toBeTruthy();
     });
   });
